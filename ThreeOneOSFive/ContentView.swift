@@ -41,7 +41,7 @@ struct ContentView: View {
         TabView {
             appTab(title: "FF Normal", icon: "scope") { normalTab }
             appTab(title: "FF Max", icon: "flame.fill") { maxTab }
-            appTab(title: "SKIN PATCH", icon: "sparkles") { modSkinsTab }
+            appTab(title: "TEXTURAS", icon: "sparkles") { modSkinsTab }
             appTab(title: "Developer", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
@@ -93,8 +93,8 @@ struct ContentView: View {
 
     private var modSkinsTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "SKIN PATCH", subtitle: "FF NORMAL • SKIN COLLECTION", icon: "sparkles")
-            Text("Choose a skin, then switch it ON or OFF. These skins are for FF Normal.")
+            gameIntro(title: "TEXTURAS", subtitle: "FF NORMAL • COLECCIÓN DE TEXTURAS", icon: "sparkles")
+            Text("Elige una textura y actívala o desactívala. Estas texturas son para FF Normal.")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(.white.opacity(0.62))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -367,10 +367,10 @@ struct ContentView: View {
                 .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(color.opacity(0.62), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("SKIN \(String(format: "%02d", number))")
+                Text("TEXTURA \(String(format: "%02d", number))")
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
-                Text("FF NORMAL • SKIN PATCH")
+                Text("FF NORMAL • TEXTURA")
                     .font(.system(size: 9, weight: .bold, design: .rounded))
                     .tracking(0.7)
                     .foregroundStyle(color)
@@ -601,7 +601,7 @@ struct ContentView: View {
                 .foregroundStyle(AppTheme.paper)
 
             socialLink(title: "TikTok", subtitle: "@el_jefry___", systemImage: "music.note", url: "https://www.tiktok.com/@el_jefry___?_r=1&_t=ZT-99k7qCypEi6w")
-            socialLink(title: "WhatsApp", subtitle: "+1 772 323 8062", systemImage: "phone.fill", url: "tel://+17723238062")
+            socialLink(title: "WhatsApp", subtitle: "+1 772 323 8062", systemImage: "message.fill", url: "https://wa.me/17723238062")
         }
         .padding(15)
         .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
