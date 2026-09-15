@@ -19,7 +19,7 @@ struct LicenseActivationView: View {
                         VStack(spacing: 0) {
                             Spacer(minLength: 42)
 
-                            Text("Vesper External")
+                            Text("Jefry External")
                                 .font(.system(size: 30, weight: .black, design: .rounded))
                                 .tracking(1.4)
                                 .foregroundStyle(.white)
@@ -45,7 +45,7 @@ struct LicenseActivationView: View {
                                     Spacer()
                                 }
 
-                                Text("Enter your Vesper External license key to continue")
+                                Text("Enter your Jefry External license key to continue")
                                     .font(.system(size: 13, weight: .medium, design: .rounded))
                                     .foregroundStyle(.white.opacity(0.68))
                                     .frame(maxWidth: .infinity, alignment: .leading)

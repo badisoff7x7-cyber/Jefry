@@ -201,7 +201,7 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("VESPER EXTERNAL")
+                Text("JEFRY EXTERNAL")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
@@ -244,7 +244,7 @@ struct ContentView: View {
 
     private var externalChannelCard: some View {
         Button {
-            guard let url = URL(string: "https://t.me/VesperExtrenal") else { return }
+            guard let url = URL(string: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17") else { return }
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 12) {
@@ -253,10 +253,10 @@ struct ContentView: View {
                     .frame(width: 32, height: 32)
                     .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("VESPER EXTERNAL CHANNEL")
+                    Text("JEFRY EXTERNAL CHANNEL")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                    Text("t.me/VesperExtrenal")
+                        Text("Jefry External")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryAccent)
                 }
@@ -479,7 +479,7 @@ struct ContentView: View {
                 .tracking(1.2)
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
-            Text("VESPER • PRONTO")
+            Text("JEFRY • READY")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.accent.opacity(0.8))
         }
@@ -491,17 +491,17 @@ struct ContentView: View {
 
     private var developerCredits: some View {
         VStack(spacing: 10) {
-            Text("VESPER EXTRENAL")
+            Text("JEFRY EXTERNAL")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.72))
                 .multilineTextAlignment(.center)
 
-            Text("Our Telegram channels")
+            Text("Official Jefry links")
                 .font(.system(size: 10, weight: .semibold, design: .rounded))
                 .foregroundStyle(AppTheme.secondaryAccent.opacity(0.85))
 
             HStack(spacing: 10) {
-                channelButton(title: "YAGAMI iOS", url: "https://t.me/+5HHaZurHPA9hOWM8")
+                channelButton(title: "JEFRY IOS • USER", url: "https://t.me/+5HHaZurHPA9hOWM8")
             }
         }
         .frame(maxWidth: .infinity)
@@ -512,7 +512,7 @@ struct ContentView: View {
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image("VesperBanner")
+                Image("JefryLogo")
                     .resizable()
                     .scaledToFill()
                     .frame(width: 58, height: 58)
@@ -522,7 +522,7 @@ struct ContentView: View {
                     Text("DEVELOPER INFO")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundStyle(developerAccent)
-                    Text("YAGAMIxIOS")
+                    Text("JEFRY IOS")
                         .font(.system(size: 20, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                 }
@@ -565,7 +565,7 @@ struct ContentView: View {
 
     private var extrenalChannelCard: some View {
         Button {
-            guard let url = URL(string: "https://t.me/VesperExtrenal") else { return }
+            guard let url = URL(string: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17") else { return }
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 14) {
@@ -577,7 +577,7 @@ struct ContentView: View {
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.paper)
-                    Text("@VesperExtrenal")
+                    Text("WhatsApp • Jefry Ventas")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.paper.opacity(0.62))
                 }
@@ -594,33 +594,45 @@ struct ContentView: View {
     }
 
     private var feedbackCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("FEEDBACK & CONTACT")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(AppTheme.paper)
+
+            socialLink(title: "TikTok", subtitle: "@el_jefry___", systemImage: "music.note", url: "https://www.tiktok.com/@el_jefry___?_r=1&_t=ZT-99k7qCypEi6w")
+            socialLink(title: "WhatsApp", subtitle: "Jefry Ventas channel", systemImage: "message.fill", url: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17")
+        }
+        .padding(15)
+        .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(developerAccent.opacity(0.45), lineWidth: 1))
+    }
+
+    private func socialLink(title: String, subtitle: String, systemImage: String, url: String) -> some View {
         Button {
-            guard let url = URL(string: "https://t.me/YAGAMIxIOS") else { return }
-            UIApplication.shared.open(url)
+            guard let destination = URL(string: url) else { return }
+            UIApplication.shared.open(destination)
         } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .foregroundStyle(developerAccent)
-                    .font(.system(size: 22, weight: .bold))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("FEEDBACK")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .tracking(1.2)
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(AppTheme.paper)
+                    .frame(width: 42, height: 42)
+                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                    Text("Send feedback to @YAGAMIxIOS")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.paper.opacity(0.62))
                 }
                 Spacer()
                 Image(systemName: "arrow.up.right")
                     .foregroundStyle(developerAccent)
             }
-            .padding(15)
-            .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(developerAccent.opacity(0.45), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Send feedback on Telegram")
     }
 
     private var developerAccent: Color {
@@ -641,7 +653,7 @@ struct ContentView: View {
 
     private var telegramCard: some View {
         Button {
-            guard let url = URL(string: "https://t.me/YAGAMIxIOS") else { return }
+            guard let url = URL(string: "https://t.me/+5HHaZurHPA9hOWM8") else { return }
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 14) {
@@ -651,11 +663,11 @@ struct ContentView: View {
                     .frame(width: 48, height: 48)
                     .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("TELEGRAM")
+                    Text("DEVELOPER INFO")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.secondaryAccent)
-                    Text("@YAGAMIxIOS")
+                    Text("JEFRY IOS USER")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                 }
@@ -669,7 +681,7 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open Telegram YAGAMIxIOS")
+        .accessibilityLabel("Open Jefry IOS developer link")
     }
 
     private func channelButton(title: String, url: String) -> some View {
