@@ -31,7 +31,7 @@ struct ContentView: View {
         "SKIN 5.3105", "SKIN 6.3105", "SKIN 7.3105"
     ]
     private let normalPatchFiles = [
-        "FFTH AIM NECK.3105", "BODY.3105", "DRAGTH.3105", "144-FPS.3105"
+        "BODY.3105", "DRAGTH.3105", "144-FPS.3105"
     ]
     private let maxPatchFiles = [
         "DRAGM.3105", "MAGICM.3105", "NECKM.3105"
@@ -248,7 +248,7 @@ struct ContentView: View {
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "paperplane.fill")
+                Image(systemName: "message.fill")
                     .foregroundStyle(AppTheme.secondaryAccent)
                     .frame(width: 32, height: 32)
                     .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
@@ -285,7 +285,7 @@ struct ContentView: View {
                     .foregroundStyle(.white.opacity(0.45))
             }
 
-            VStack(spacing: 0) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 ForEach(Array(files.enumerated()), id: \.element) { index, filename in
                     patchCard(
                         name: patchDisplayName(for: filename),
@@ -519,7 +519,7 @@ struct ContentView: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(developerAccent.opacity(0.7), lineWidth: 2))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("DEVELOPER INFO")
+                    Text("DEVELOPER")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundStyle(developerAccent)
                     Text("JEFRY IOS")
@@ -569,7 +569,7 @@ struct ContentView: View {
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: "paperplane.fill")
+                Image(systemName: "message.fill")
                     .foregroundStyle(developerAccent)
                     .font(.system(size: 22, weight: .bold))
                 VStack(alignment: .leading, spacing: 3) {
@@ -663,7 +663,7 @@ struct ContentView: View {
                     .frame(width: 48, height: 48)
                     .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DEVELOPER INFO")
+                    Text("DEVELOPER")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.secondaryAccent)
