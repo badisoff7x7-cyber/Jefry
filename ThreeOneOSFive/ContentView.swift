@@ -527,7 +527,7 @@ struct ContentView: View {
                         .foregroundStyle(AppTheme.paper)
                 }
             }
-            Label("DEVELOPER INFO • DESIGN \(developerDesign + 1)", systemImage: developerIcon)
+            Label("DEVELOPER", systemImage: developerIcon)
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .tracking(1.4)
                 .foregroundStyle(AppTheme.accent)
@@ -636,7 +636,7 @@ struct ContentView: View {
     }
 
     private var developerAccent: Color {
-        [AppTheme.accent, AppTheme.secondaryAccent, .cyan, .orange, .pink, .yellow, .mint, .indigo, .teal, .white][developerDesign]
+        [AppTheme.accent, AppTheme.secondaryAccent, .blue, .cyan, Color(red: 0.10, green: 0.30, blue: 0.85), Color(red: 0.12, green: 0.58, blue: 0.92), .indigo, .teal, AppTheme.accent, AppTheme.secondaryAccent][developerDesign]
     }
 
     private var developerIcon: String {
@@ -667,7 +667,7 @@ struct ContentView: View {
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.secondaryAccent)
-                    Text("JEFRY IOS USER")
+                    Text("JEFRY IOS • USER LINK")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                 }
