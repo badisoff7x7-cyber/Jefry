@@ -31,7 +31,7 @@ struct ContentView: View {
         "SKIN 5.3105", "SKIN 6.3105", "SKIN 7.3105"
     ]
     private let normalPatchFiles = [
-        "BODY.3105", "DRAGTH.3105", "144-FPS.3105"
+        "FFTH AIM NECK.3105", "BODY.3105", "DRAGTH.3105", "144-FPS.3105"
     ]
     private let maxPatchFiles = [
         "DRAGM.3105", "MAGICM.3105", "NECKM.3105"
@@ -169,10 +169,10 @@ struct ContentView: View {
     private var developerTab: some View {
         VStack(spacing: 16) {
             developerCard
-            telegramCard
             externalChannelCard
             feedbackCard
             devicePanel
+            telegramCard
         }
     }
 
@@ -253,10 +253,10 @@ struct ContentView: View {
                     .frame(width: 32, height: 32)
                     .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("JEFRY EXTERNAL CHANNEL")
+                    Text("WHATSAPP CHANNEL")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                        Text("Jefry External")
+                        Text("Jefry Ventas")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryAccent)
                 }
@@ -285,7 +285,7 @@ struct ContentView: View {
                     .foregroundStyle(.white.opacity(0.45))
             }
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            VStack(spacing: 0) {
                 ForEach(Array(files.enumerated()), id: \.element) { index, filename in
                     patchCard(
                         name: patchDisplayName(for: filename),
@@ -338,12 +338,12 @@ struct ContentView: View {
 
     private func patchDisplayName(for filename: String) -> String {
         if filename == "144-FPS.3105" { return "144 FPS" }
-        if filename == "FFTH AIM NECK.3105" { return "AIMH4X" }
-        if filename == "BODY.3105" { return "AIMBODY" }
-        if filename == "DRAGTH.3105" { return "AIM DRAG" }
-        if filename == "DRAGM.3105" { return "AIM DRAG" }
-        if filename == "MAGICM.3105" { return "AIM MAGIC" }
-        if filename == "NECKM.3105" { return "AIM NECK" }
+        if filename == "FFTH AIM NECK.3105" { return "CUELLO" }
+        if filename == "BODY.3105" { return "AIMBOT PECHO" }
+        if filename == "DRAGTH.3105" { return "HEAD" }
+        if filename == "DRAGM.3105" { return "HEAD" }
+        if filename == "MAGICM.3105" { return "BALAS MÁGICAS" }
+        if filename == "NECKM.3105" { return "CUELLO" }
         if filename == "HEADM.3105" {
             return "AIMHEAD"
         }
@@ -519,7 +519,7 @@ struct ContentView: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(developerAccent.opacity(0.7), lineWidth: 2))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("DEVELOPER")
+                    Text("DEVELOPER INFO")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundStyle(developerAccent)
                     Text("JEFRY IOS")
@@ -527,7 +527,7 @@ struct ContentView: View {
                         .foregroundStyle(AppTheme.paper)
                 }
             }
-            Label("DEVELOPER", systemImage: developerIcon)
+            Label("DEVELOPER INFO • DESIGN \(developerDesign + 1)", systemImage: developerIcon)
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .tracking(1.4)
                 .foregroundStyle(AppTheme.accent)
@@ -569,7 +569,7 @@ struct ContentView: View {
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: "message.fill")
+                Image(systemName: "paperplane.fill")
                     .foregroundStyle(developerAccent)
                     .font(.system(size: 22, weight: .bold))
                 VStack(alignment: .leading, spacing: 3) {
@@ -595,13 +595,13 @@ struct ContentView: View {
 
     private var feedbackCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("FEEDBACK & CONTACT")
+            Text("CONTACT")
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .tracking(1.2)
                 .foregroundStyle(AppTheme.paper)
 
             socialLink(title: "TikTok", subtitle: "@el_jefry___", systemImage: "music.note", url: "https://www.tiktok.com/@el_jefry___?_r=1&_t=ZT-99k7qCypEi6w")
-            socialLink(title: "WhatsApp", subtitle: "Jefry Ventas channel", systemImage: "message.fill", url: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17")
+            socialLink(title: "WhatsApp", subtitle: "+1 772 323 8062", systemImage: "phone.fill", url: "tel://+17723238062")
         }
         .padding(15)
         .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -636,7 +636,7 @@ struct ContentView: View {
     }
 
     private var developerAccent: Color {
-        [AppTheme.accent, AppTheme.secondaryAccent, .blue, .cyan, Color(red: 0.10, green: 0.30, blue: 0.85), Color(red: 0.12, green: 0.58, blue: 0.92), .indigo, .teal, AppTheme.accent, AppTheme.secondaryAccent][developerDesign]
+        [AppTheme.accent, AppTheme.secondaryAccent, .cyan, .orange, .pink, .yellow, .mint, .indigo, .teal, .white][developerDesign]
     }
 
     private var developerIcon: String {
@@ -653,7 +653,7 @@ struct ContentView: View {
 
     private var telegramCard: some View {
         Button {
-            guard let url = URL(string: "https://t.me/+5HHaZurHPA9hOWM8") else { return }
+            guard let url = URL(string: "https://t.me/YAGAMIxIOS") else { return }
             UIApplication.shared.open(url)
         } label: {
             HStack(spacing: 14) {
@@ -667,7 +667,7 @@ struct ContentView: View {
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.secondaryAccent)
-                    Text("JEFRY IOS • USER LINK")
+                    Text("YAGAMI IOS")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                 }
@@ -681,7 +681,7 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open Jefry IOS developer link")
+        .accessibilityLabel("Open Yagami IOS Telegram account")
     }
 
     private func channelButton(title: String, url: String) -> some View {
