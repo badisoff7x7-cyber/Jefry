@@ -6,10 +6,9 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appState: AppState
     @State private var showCleaner = false
-    // Kept for private helper compatibility; Developer tab is not exposed.
-    @State private var developerDesign = 0
     @State private var remoteSyncTask: Task<Void, Never>?
     @State private var fileSafety: [String: Bool] = [:]
+    @State private var developerDesign = 0
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
     @State private var patchMessage = "READY — SELECT A PATCH"
@@ -334,6 +333,246 @@ struct ContentView: View {
         .padding(16)
         .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
+    }
+
+    private func gameIntro(title: String, subtitle: String, icon: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 25, weight: .black))
+                .foregroundStyle(AppTheme.accent)
+                .frame(width: 54, height: 54)
+                .background(AppTheme.paper, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 22, weight: .black, design: .rounded)).foregroundStyle(AppTheme.paper)
+                Text(subtitle).font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.5).foregroundStyle(AppTheme.secondaryAccent)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            LinearGradient(colors: [AppTheme.referenceCard, AppTheme.ink.opacity(0.88)], startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+        )
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.28), lineWidth: 1))
+        .shadow(color: AppTheme.secondaryAccent.opacity(0.12), radius: 18, y: 8)
+    }
+
+    private var brandHeader: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("ONYX EXTERNAL")
+                    .font(.system(size: 25, weight: .black, design: .rounded))
+                    .tracking(3)
+                    .foregroundStyle(AppTheme.paper)
+                Text("PATCH CONTROL CENTER")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .tracking(1.7)
+                    .foregroundStyle(AppTheme.accent)
+            }
+
+            Spacer()
+            ZStack {
+                Circle().fill(AppTheme.accent.opacity(0.16)).frame(width: 54, height: 54).blur(radius: 9)
+                Image(systemName: "bolt.horizontal.fill")
+                    .font(.system(size: 22, weight: .black))
+                    .foregroundStyle(AppTheme.accent)
+                    .frame(width: 46, height: 46)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
+                    .shadow(color: AppTheme.accent.opacity(0.45), radius: 12)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial.opacity(0.72), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.accent.opacity(0.28), lineWidth: 1))
+        .shadow(color: AppTheme.accent.opacity(0.14), radius: 18, y: 7)
+    }
+
+    private var devicePanel: some View {
+        VStack(spacing: 0) {
+            panelTitle("DEVICE STATUS", icon: "shield.lefthalf.filled")
+            statusRow(icon: "apple.logo", title: "iOS", value: AppInfo.osVersion, color: AppTheme.secondaryAccent)
+            statusRow(icon: "iphone", title: "Device", value: AppInfo.displayMachineName, color: AppTheme.secondaryAccent)
+            statusRow(icon: "checkmark.seal.fill", title: "Support", value: appState.isSupported ? "SUPPORTED" : "UNSUPPORTED", color: appState.isSupported ? .green : .red)
+        }
+        .padding(16)
+        .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.32), lineWidth: 1))
+    }
+
+    private var externalChannelCard: some View {
+        Button {
+            guard let url = URL(string: "https://t.me/VesperExtrenal") else { return }
+            UIApplication.shared.open(url)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "paperplane.fill")
+                    .foregroundStyle(AppTheme.secondaryAccent)
+                    .frame(width: 32, height: 32)
+                    .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ONYX EXTERNAL CHANNEL")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundStyle(AppTheme.paper)
+                    Text("t.me/VesperExtrenal")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(AppTheme.secondaryAccent)
+                }
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .foregroundStyle(AppTheme.secondaryAccent)
+            }
+            .padding(14)
+            .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.28), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func patchOptions(
+        files: [String],
+        category: String,
+        sectionTitle: String,
+        targetTitle: String,
+        targetBundleID: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                panelTitle(sectionTitle, icon: category == "skin" ? "sparkles" : (category == "esp" ? "eye.fill" : (category == "hologram" ? "cube.transparent" : "bolt.fill")))
+                Spacer()
+                Text("SELECT PATCH")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.45))
+            }
+
+            let remotePatches = patchStore.remoteEntries(category: category, bundleID: targetBundleID)
+            if !remotePatches.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(Array(remotePatches.enumerated()), id: \.element.id) { index, remote in
+                        let package = patchStore.localFilename(for: remote) ?? remote.filename
+                        patchCard(
+                            name: remote.name,
+                            target: targetTitle,
+                            package: package,
+                            color: index.isMultiple(of: 2) ? AppTheme.accent : AppTheme.secondaryAccent,
+                            imageURL: VesperDashRemoteSync.validImageURL(for: remote),
+                            state: patchBinding(for: package, targetBundleID: targetBundleID),
+                            targetBundleID: targetBundleID
+                        )
+                    }
+                }
+            } else {
+                Text("NO \(category.uppercased()) PATCHES — ADD FILES FROM ONYX ONLINE")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .padding(.vertical, 10)
+            }
+
+        }
+    }
+
+    private func patchCard(
+        name: String,
+        target: String,
+        package: String,
+        color: Color,
+        imageURL: URL? = nil,
+        state: Binding<Bool>,
+        targetBundleID: String
+    ) -> some View {
+        PatchOptionCard(name: name, target: target, color: color, imageURL: imageURL, isEnabled: state, isBusy: patchOperationBusy) {
+            togglePatch(
+                packageFilename: package,
+                displayName: name,
+                state: state,
+                targetBundleID: targetBundleID
+            )
+        }
+    }
+
+    private func patchBinding(for filename: String, targetBundleID: String) -> Binding<Bool> {
+        let key = patchStateKey(filename, targetBundleID: targetBundleID)
+        return Binding(
+            get: { patchEnabled[key, default: false] },
+            set: { patchEnabled[key] = $0 }
+        )
+    }
+
+    private func patchStateKey(_ filename: String, targetBundleID: String) -> String {
+        "\(targetBundleID)::\(filename)"
+    }
+
+    private func patchDisplayName(for filename: String) -> String {
+        if filename == "OBB.3105" { return "AIMBODY" }
+        if filename == "DRAG.3105" { return "AIM DRAG" }
+        if filename == "MAGIC.3105" { return "AIM MAGIC" }
+        if filename == "DRAGM.3105" { return "AIM DRAG" }
+        if filename == "OBBM.3105" { return "AIMBODY" }
+        if filename == "MAGICM.3105" { return "MAGIC BULLET" }
+        if filename == "WEAPONS.3105" || filename == "WEAPONSM.3105" { return "WEAPONS HOLO" }
+        return filename.replacingOccurrences(of: ".3105", with: "")
+            .replacingOccurrences(of: " AIM ", with: " • ")
+            .replacingOccurrences(of: "M", with: " M")
+            .replacingOccurrences(of: "TH", with: " TH")
+    }
+
+    private var gameLaunchPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            panelTitle("LAUNCH GAME", icon: "arrow.up.forward.app.fill")
+            launchButton(title: "FF NORMAL", subtitle: "Free Fire Normal", color: AppTheme.accent, scheme: "freefireth")
+            Button {
+                showCleaner = true
+            } label: {
+                Label("Clean Cache & Temp", systemImage: "trash.slash.fill")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.accent.opacity(0.52), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open cache and temporary files cleaner")
+        }
+    }
+
+    private func launchButton(title: String, subtitle: String, color: Color, scheme: String) -> some View {
+        Button { openGame(scheme: scheme) } label: {
+            VStack(alignment: .leading, spacing: 7) {
+                Image(systemName: "arrow.up.right.square.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(color)
+                Text(title)
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                Text(subtitle)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+            .padding(.horizontal, 14)
+            .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(color.opacity(0.38), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var footerStatus: some View {
+        HStack(spacing: 10) {
+            Circle().fill(AppTheme.secondaryAccent).frame(width: 9, height: 9).shadow(color: AppTheme.accent, radius: 6)
+            Text("SISTEMA PRONTO")
+                .font(.system(size: 10, weight: .black, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(.white.opacity(0.72))
+            Spacer()
+            Text("ONYX • READY")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.accent.opacity(0.8))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 13)
+        .background(AppTheme.referenceCard, in: Capsule())
+        .overlay(Capsule().stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
     }
 
     private var developerCredits: some View {
