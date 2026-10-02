@@ -35,13 +35,15 @@ def db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE IF NOT EXISTS patches (
-        id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'aim', game TEXT NOT NULL,
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, product TEXT NOT NULL DEFAULT 'EXTERNAL VESPER', category TEXT NOT NULL DEFAULT 'aim', game TEXT NOT NULL,
         bundle_id TEXT NOT NULL, target_path TEXT NOT NULL, target_paths TEXT NOT NULL DEFAULT '[]', filename TEXT NOT NULL,
         stored_filename TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 1, paused INTEGER NOT NULL DEFAULT 0,
         version TEXT NOT NULL, image_filename TEXT NOT NULL DEFAULT '', status_text TEXT NOT NULL DEFAULT 'NO STATUS', sort_order INTEGER NOT NULL DEFAULT 1000, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     )""")
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(patches)")}
+    if "product" not in columns:
+        conn.execute("ALTER TABLE patches ADD COLUMN product TEXT NOT NULL DEFAULT 'EXTERNAL VESPER'")
     if "category" not in columns:
         conn.execute("ALTER TABLE patches ADD COLUMN category TEXT NOT NULL DEFAULT 'aim'")
     if "image_filename" not in columns:
@@ -214,6 +216,8 @@ def set_admin_state():
 def upload_patch():
     required = ["id", "name", "game", "bundle_id", "version"]
     if not all(request.form.get(k) for k in required): return jsonify(error="missing metadata"), 400
+    product = request.form.get("product", "EXTERNAL VESPER").strip().upper()
+    if product not in {"EXTERNAL VESPER", "ONYX"}: return jsonify(error="unsupported product"), 400
     raw_target_paths = [request.form.get("target_path", ""), request.form.get("target_path_2", "")]
     target_paths = []
     for path in raw_target_paths:
@@ -256,9 +260,9 @@ def upload_patch():
         image_filename = f"{patch_id}-cover-{image_digest[:12]}.{extension}"
         IMAGE_DIR.mkdir(parents=True, exist_ok=True); (IMAGE_DIR / image_filename).write_bytes(image_raw)
     now = int(time.time()); conn = db()
-    conn.execute("""INSERT INTO patches(id,name,category,game,bundle_id,target_path,target_paths,filename,stored_filename,sha256,size,version,image_filename,status_text,sort_order,created_at,updated_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,category=excluded.category,game=excluded.game,bundle_id=excluded.bundle_id,target_path=excluded.target_path,target_paths=excluded.target_paths,filename=excluded.filename,stored_filename=excluded.stored_filename,sha256=excluded.sha256,size=excluded.size,version=excluded.version,image_filename=CASE WHEN excluded.image_filename != '' THEN excluded.image_filename ELSE patches.image_filename END,status_text=excluded.status_text,sort_order=excluded.sort_order,updated_at=excluded.updated_at""",
-        (patch_id, request.form["name"], category, request.form["game"], bundle, target_paths[0] if target_paths else "", json.dumps(target_paths), filename, stored, digest, len(raw), request.form["version"], image_filename, status_text, sort_order, now, now))
+    conn.execute("""INSERT INTO patches(id,name,product,category,game,bundle_id,target_path,target_paths,filename,stored_filename,sha256,size,version,image_filename,status_text,sort_order,created_at,updated_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,product=excluded.product,category=excluded.category,game=excluded.game,bundle_id=excluded.bundle_id,target_path=excluded.target_path,target_paths=excluded.target_paths,filename=excluded.filename,stored_filename=excluded.stored_filename,sha256=excluded.sha256,size=excluded.size,version=excluded.version,image_filename=CASE WHEN excluded.image_filename != '' THEN excluded.image_filename ELSE patches.image_filename END,status_text=excluded.status_text,sort_order=excluded.sort_order,updated_at=excluded.updated_at""",
+        (patch_id, request.form["name"], product, category, request.form["game"], bundle, target_paths[0] if target_paths else "", json.dumps(target_paths), filename, stored, digest, len(raw), request.form["version"], image_filename, status_text, sort_order, now, now))
     conn.commit(); row = conn.execute("SELECT * FROM patches WHERE id=?", (patch_id,)).fetchone(); conn.close()
     return jsonify(patch=public_row(row)), 201
 
