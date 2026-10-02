@@ -208,7 +208,7 @@ struct ContentView: View {
 
     private var aimTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "AIM", subtitle: "REMOTE AIM PATCHES", icon: "scope")
+            gameIntro(title: "🎯 AIM", subtitle: "ONLINE AIM PATCHES", icon: "scope")
             patchOptions(
                 files: normalPatchFiles,
                 category: "aim",
@@ -221,28 +221,28 @@ struct ContentView: View {
 
     private var espTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "ESP", subtitle: "REMOTE ESP PATCHES", icon: "eye.fill")
+            gameIntro(title: "👁 ESP", subtitle: "ONLINE ESP PATCHES", icon: "eye.fill")
             patchOptions(files: [], category: "esp", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var hologramTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "HOLOGRAM", subtitle: "REMOTE HOLOGRAM PATCHES", icon: "cube.transparent")
+            gameIntro(title: "🧊 HOLOGRAM", subtitle: "ONLINE HOLOGRAM PATCHES", icon: "cube.transparent")
             patchOptions(files: [], category: "hologram", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var skinModTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "SKIN MOD", subtitle: "REMOTE SKIN PATCHES", icon: "sparkles")
+            gameIntro(title: "✨ SKIN MOD", subtitle: "ONLINE SKIN PATCHES", icon: "sparkles")
             patchOptions(files: [], category: "skin", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var fileStatusTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "FILE STATUS", subtitle: "REMOTE STATUS CENTER", icon: "doc.badge.gearshape")
+            gameIntro(title: "📡 FILE STATUS", subtitle: "ONLINE STATUS CENTER", icon: "doc.badge.gearshape")
             fileStatusPanel
         }
     }
@@ -252,7 +252,7 @@ struct ContentView: View {
             HStack {
                 panelTitle("PATCH FILES", icon: "checkmark.shield.fill")
                 Spacer()
-                Text("ONYX ONLINE")
+                Text("🌐 ONYX ONLINE")
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
@@ -277,7 +277,7 @@ struct ContentView: View {
             .background(AppTheme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             if patchStore.remoteEntries.isEmpty {
-                Text("NO FILES ON ONYX ONLINE")
+                Text("📭 NO ONLINE ONYX FILES")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.paper.opacity(0.5))
                     .padding(.vertical, 14)
@@ -325,7 +325,7 @@ struct ContentView: View {
                 }
             }
 
-            Text("STATUS IS CONTROLLED ONLY FROM ONYX ONLINE")
+            Text("🔒 STATUS CONTROLLED BY ONYX ONLINE")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.52))
                 .padding(.top, 5)
@@ -360,11 +360,11 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("ONYX EXTERNAL")
+                Text("🖤 ONYX EXTERNAL")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
-                Text("PATCH CONTROL CENTER")
+                Text("⚡ ONLINE PATCH CONTROL")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.7)
                     .foregroundStyle(AppTheme.accent)
@@ -565,7 +565,7 @@ struct ContentView: View {
                 .tracking(1.2)
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
-            Text("ONYX • READY")
+            Text("✅ ONYX READY")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.accent.opacity(0.8))
         }
@@ -577,7 +577,7 @@ struct ContentView: View {
 
     private var developerCredits: some View {
         VStack(spacing: 10) {
-            Text("ONYX EXTERNAL")
+            Text("🖤 ONYX EXTERNAL")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.72))
                 .multilineTextAlignment(.center)
@@ -1141,14 +1141,14 @@ struct AnimatedHyperBackdrop: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [AppTheme.pageBackground, Color(red: 0.16, green: 0.025, blue: 0.24), AppTheme.pageBackground],
+                colors: [AppTheme.pageBackground, Color(red: 0.02, green: 0.16, blue: 0.19), AppTheme.consoleBackground],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            RadialGradient(colors: [AppTheme.accent.opacity(0.18), .clear], center: .topTrailing, startRadius: 10, endRadius: 280)
-            RadialGradient(colors: [AppTheme.secondaryAccent.opacity(0.12), .clear], center: .bottomLeading, startRadius: 10, endRadius: 320)
-            RadialGradient(colors: [Color.blue.opacity(0.055), .clear], center: .center, startRadius: 10, endRadius: 360)
-            RadialGradient(colors: [Color.purple.opacity(0.035), .clear], center: .bottomTrailing, startRadius: 10, endRadius: 260)
+            AngularGradient(colors: [AppTheme.accent.opacity(0.13), .clear, AppTheme.secondaryAccent.opacity(0.10), .clear], center: .topTrailing)
+            RadialGradient(colors: [AppTheme.accent.opacity(0.16), .clear], center: .topTrailing, startRadius: 8, endRadius: 260)
+            RadialGradient(colors: [AppTheme.secondaryAccent.opacity(0.12), .clear], center: .bottomLeading, startRadius: 8, endRadius: 300)
+            EmberField()
             GridOverlay()
         }
     }
