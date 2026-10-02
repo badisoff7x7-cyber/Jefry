@@ -6,7 +6,6 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appState: AppState
     @State private var showCleaner = false
-    @State private var developerDesign = 0
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
     @State private var patchMessage = "READY — SELECT A PATCH"
@@ -42,7 +41,6 @@ struct ContentView: View {
             appTab(title: "FF Normal", icon: "scope") { normalTab }
             appTab(title: "FF Max", icon: "flame.fill") { maxTab }
             appTab(title: "TEXTURAS", icon: "sparkles") { modSkinsTab }
-            appTab(title: "Developer", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
@@ -166,16 +164,6 @@ struct ContentView: View {
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
     }
 
-    private var developerTab: some View {
-        VStack(spacing: 16) {
-            developerCard
-            externalChannelCard
-            feedbackCard
-            devicePanel
-            telegramCard
-        }
-    }
-
     private func gameIntro(title: String, subtitle: String, icon: String) -> some View {
         HStack(spacing: 14) {
             Image(systemName: icon)
@@ -201,11 +189,11 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("JEFRY EXTERNAL")
+                Text("EXTERNAL DYALI")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
-                Text("PATCH CONTROL CENTER")
+                Text("RESELLER ONYXX")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.7)
                     .foregroundStyle(AppTheme.accent)
@@ -487,217 +475,6 @@ struct ContentView: View {
         .padding(.vertical, 13)
         .background(AppTheme.referenceCard, in: Capsule())
         .overlay(Capsule().stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
-    }
-
-    private var developerCredits: some View {
-        VStack(spacing: 10) {
-            Text("JEFRY EXTERNAL")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-                .multilineTextAlignment(.center)
-
-            Text("Official Jefry links")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppTheme.secondaryAccent.opacity(0.85))
-
-            HStack(spacing: 10) {
-                channelButton(title: "JEFRY IOS • USER", url: "https://t.me/+5HHaZurHPA9hOWM8")
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
-        .padding(.bottom, 8)
-    }
-
-    private var developerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Image("JefryLogo")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 58, height: 58)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(developerAccent.opacity(0.7), lineWidth: 2))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("DEVELOPER INFO")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundStyle(developerAccent)
-                    Text("JEFRY IOS")
-                        .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                }
-            }
-            Label("DEVELOPER INFO • DESIGN \(developerDesign + 1)", systemImage: developerIcon)
-                .font(.system(size: 12, weight: .black, design: .rounded))
-                .tracking(1.4)
-                .foregroundStyle(AppTheme.accent)
-            HStack {
-                Text("BUILD")
-                Spacer()
-                Text("1.1.1")
-            }
-            .font(.system(size: 11, weight: .bold, design: .rounded))
-            .foregroundStyle(AppTheme.secondaryAccent)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(18)
-        .background(developerBackground, in: developerShape)
-        .overlay(developerShape.stroke(developerAccent.opacity(0.5), lineWidth: 1))
-    }
-
-    private var developerDesignPicker: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("DEVELOPER STYLES")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(AppTheme.secondaryAccent)
-            Picker("Developer style", selection: $developerDesign) {
-                ForEach(0..<10, id: \.self) { index in
-                    Text("\(index + 1)").tag(index)
-                }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("Choose developer information design")
-        }
-        .padding(14)
-        .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private var extrenalChannelCard: some View {
-        Button {
-            guard let url = URL(string: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17") else { return }
-            UIApplication.shared.open(url)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "paperplane.fill")
-                    .foregroundStyle(developerAccent)
-                    .font(.system(size: 22, weight: .bold))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("EXTRENAL CHANNEL")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(AppTheme.paper)
-                    Text("WhatsApp • Jefry Ventas")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.paper.opacity(0.62))
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .foregroundStyle(developerAccent)
-            }
-            .padding(15)
-            .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(developerAccent.opacity(0.45), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Extrenal channel")
-    }
-
-    private var feedbackCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("CONTACT")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(AppTheme.paper)
-
-            socialLink(title: "TikTok", subtitle: "@el_jefry___", systemImage: "music.note", url: "https://www.tiktok.com/@el_jefry___?_r=1&_t=ZT-99k7qCypEi6w")
-            socialLink(title: "WhatsApp", subtitle: "+1 772 323 8062", systemImage: "message.fill", url: "https://wa.me/17723238062")
-        }
-        .padding(15)
-        .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(developerAccent.opacity(0.45), lineWidth: 1))
-    }
-
-    private func socialLink(title: String, subtitle: String, systemImage: String, url: String) -> some View {
-        Button {
-            guard let destination = URL(string: url) else { return }
-            UIApplication.shared.open(destination)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(AppTheme.paper)
-                    .frame(width: 42, height: 42)
-                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                    Text(subtitle)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.paper.opacity(0.62))
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .foregroundStyle(developerAccent)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var developerAccent: Color {
-        [AppTheme.accent, AppTheme.secondaryAccent, .cyan, .orange, .pink, .yellow, .mint, .indigo, .teal, .white][developerDesign]
-    }
-
-    private var developerIcon: String {
-        ["hammer.fill", "sparkles", "bolt.fill", "person.crop.circle.fill", "star.fill", "wand.and.stars", "swift", "paintpalette.fill", "terminal.fill", "crown.fill"][developerDesign]
-    }
-
-    private var developerShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: CGFloat(12 + (developerDesign % 5) * 4), style: .continuous)
-    }
-
-    private var developerBackground: Color {
-        developerDesign.isMultiple(of: 2) ? AppTheme.referenceCard : developerAccent.opacity(0.16)
-    }
-
-    private var telegramCard: some View {
-        Button {
-            guard let url = URL(string: "https://t.me/YAGAMIxIOS") else { return }
-            UIApplication.shared.open(url)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(AppTheme.paper)
-                    .frame(width: 48, height: 48)
-                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("DEVELOPER")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(AppTheme.secondaryAccent)
-                    Text("YAGAMI IOS")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(AppTheme.accent)
-            }
-            .padding(15)
-            .background(AppTheme.paper.opacity(0.11), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Yagami IOS Telegram account")
-    }
-
-    private func channelButton(title: String, url: String) -> some View {
-        Button {
-            guard let destination = URL(string: url) else { return }
-            UIApplication.shared.open(destination)
-        } label: {
-            Label(title, systemImage: "paperplane.fill")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(AppTheme.accent.opacity(0.18), in: Capsule())
-                .overlay(Capsule().stroke(AppTheme.accent.opacity(0.42), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 
     private func panelTitle(_ title: String, icon: String) -> some View {
