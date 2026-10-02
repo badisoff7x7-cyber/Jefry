@@ -1,4 +1,11 @@
+import CryptoKit
 import Foundation
+
+enum VesperDashDigest {
+    static func hex(_ data: Data) -> String {
+        CryptoKit.SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+}
 
 struct PatchStoreAlert: Identifiable {
     let id = UUID()
@@ -22,11 +29,34 @@ struct PatchStoreAlert: Identifiable {
 
 @MainActor
 final class PatchProjectStore: ObservableObject {
+    private static let initialSyncCompletedKey = "vesperdash.initialSyncCompleted.v6"
+    private static let authoritativeResetKey = "vesperdash.authoritativeReset.v3"
+    private static let remoteEntriesKey = "vesperdash.remoteEntries.v3"
+    private static let remoteCategoriesKey = "vesperdash.remoteCategories.v3"
+    private static let remoteImagesKey = "vesperdash.remoteImages.v3"
+    private static let remoteStatusesKey = "vesperdash.remoteStatuses.v3"
+    private static let remoteOrdersKey = "vesperdash.remoteOrders.v3"
+    private static let remoteBundlesKey = "vesperdash.remoteBundles.v3"
     @Published private(set) var items: [PatchLibraryItem] = []
     @Published private(set) var isBusy = false
+    @Published private(set) var isRemoteSyncing = false
+    @Published private(set) var hasCompletedInitialSync = false
+    @Published private(set) var isRemoteDisabled = false
+    @Published private(set) var remoteSyncMessage = "REMOTE DATA: WAITING"
+    @Published private(set) var remoteCategories: [String: String] = [:]
+    @Published private(set) var remoteImageURLs: [String: URL] = [:]
+    @Published private(set) var remoteStatusTexts: [String: String] = [:]
+    @Published private(set) var remoteOrders: [String: Int] = [:]
+    @Published private(set) var remoteEntries: [RemotePatch] = []
+    @Published private(set) var remoteBundleIDs: [String: String] = [:]
+    @Published private(set) var syncFileNames: [String] = []
+    @Published private(set) var syncFinishedFileNames: Set<String> = []
+    @Published private(set) var syncCurrentFile = ""
     @Published var passwordRequest: PatchPasswordRequest?
     @Published var alert: PatchStoreAlert?
     @Published var unlockErrorKey: String?
+    private var digestCache: [String: String] = [:]
+    private var lastManifestFingerprint = ""
 
     private struct PendingUnlock {
         let data: Data
@@ -39,10 +69,379 @@ final class PatchProjectStore: ObservableObject {
     init() {
         PatchProjectLibrary.installBundledPackagesIfNeeded()
         reload()
+        hasCompletedInitialSync = UserDefaults.standard.bool(forKey: Self.initialSyncCompletedKey)
+        let defaults = UserDefaults.standard
+        // Remote catalog data is deliberately not restored from UserDefaults.
+        // Showing cached entries before the online sync completes can inject a
+        // stale target (for example AIM cache_res in the Hologram screen).
+        remoteEntries = []
+        remoteCategories = [:]
+        remoteImageURLs = [:]
+        remoteStatusTexts = [:]
+        remoteOrders = [:]
+        remoteBundleIDs = [:]
     }
 
     func reload() {
         items = PatchProjectLibrary.load()
+    }
+
+    /// Reconcile bundled resources with Application Support after an app
+    /// upgrade, then rebuild the in-memory package list.
+    func refreshBundledPackages() {
+        PatchProjectLibrary.installBundledPackagesIfNeeded()
+        reload()
+    }
+
+    /// Pull enabled, non-paused packages from VesperDash and install them
+    /// locally. The package is still decoded by PatchPackageCodec, and the
+    /// server-provided digest is checked before anything is persisted.
+    func syncVesperDash(showCompletionAlert: Bool = true, showProgress: Bool = true) {
+        guard !isBusy else { return }
+        isBusy = true
+        isRemoteSyncing = showProgress
+        performAuthoritativeResetIfNeeded()
+        remoteBundleIDs = [:]
+        remoteSyncMessage = "REMOTE DATA: CHECKING…"
+        syncFileNames = []
+        syncFinishedFileNames = []
+        syncCurrentFile = "CONNECTING TO VESPERDASH"
+        Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                let manifest = try await VesperDashRemoteSync.fetchManifest()
+                let fingerprint = await self?.manifestFingerprint(for: manifest) ?? ""
+                guard await self?.shouldProcessManifest(fingerprint) == true else {
+                    return
+                }
+                let onyxPatches = (manifest.all_patches ?? manifest.patches).filter { $0.normalizedProduct == "ONYX" }
+                await self?.applyRemoteState(paused: manifest.global_paused)
+                await self?.applyRemoteEntries(onyxPatches)
+                let hasNewFiles = await self?.hasNewRemoteFiles(onyxPatches) ?? false
+                await self?.setRemoteSyncing(showProgress || hasNewFiles)
+                await self?.beginSyncFiles(onyxPatches.map(\.name))
+                guard !manifest.global_paused else {
+                    await self?.finishRemoteSync(showCompletionAlert: showCompletionAlert, patchCount: 0)
+                    return
+                }
+                var metadataByDigest: [String: (category: String, imageURL: URL?, statusText: String, sortOrder: Int)] = [:]
+                for remote in onyxPatches {
+                    let digest = remote.sha256.lowercased()
+                    if metadataByDigest[digest] == nil {
+                        metadataByDigest[digest] = (
+                            remote.normalizedCategory,
+                            VesperDashRemoteSync.validImageURL(for: remote),
+                            remote.status_text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+                            remote.normalizedOrder
+                        )
+                    }
+                }
+                let session = URLSession(configuration: .ephemeral)
+                defer { session.invalidateAndCancel() }
+                for remote in onyxPatches {
+                    await self?.beginSyncFile(remote.name)
+                    do {
+                        if let localURL = await self?.existingPackageURL(matchingDigest: remote.sha256) {
+                            await self?.recordRemoteBundleID(
+                                remoteBundleID: remote.bundle_id,
+                                filename: localURL.lastPathComponent
+                            )
+                            await self?.finishSyncFile(remote.name)
+                            continue
+                        }
+                        guard let url = VesperDashRemoteSync.validDownloadURL(for: remote) else {
+                            await self?.finishSyncFile(remote.name)
+                            continue
+                        }
+                        var request = URLRequest(url: url)
+                        request.timeoutInterval = 60
+                        let (data, response) = try await session.data(for: request)
+                        guard let http = response as? HTTPURLResponse,
+                              (200..<300).contains(http.statusCode),
+                              data.starts(with: Data("3105PATCH\0".utf8)),
+                              VesperDashDigest.hex(data) == remote.sha256.lowercased() else {
+                            await self?.finishSyncFile(remote.name)
+                            continue
+                        }
+                        let summary = try PatchPackageCodec.inspect(data)
+                        let decoded = try PatchPackageCodec.decode(data, password: "XRE")
+                        // Remote entries can reuse a package UUID while their
+                        // bytes change. Reusing by UUID would overwrite the
+                        // previous patch and make the older/newer manifest
+                        // entry impossible to resolve. The digest is the
+                        // stable identity for a downloaded remote package.
+                        let existingURL = await self?.existingPackageURL(matchingDigest: remote.sha256)
+                        try PatchKeyStore.store(decoded.contentKey, for: summary)
+                        try PatchProjectLibrary.installImportedPackage(
+                            data: data,
+                            decoded: decoded,
+                            summary: summary,
+                            existingURL: existingURL
+                        )
+                        let localFilename = existingURL?.lastPathComponent
+                            ?? PatchProjectLibrary.sanitizedPackageFilename(decoded.project.name)
+                        await self?.recordRemoteBundleID(remoteBundleID: remote.bundle_id, filename: localFilename)
+                    } catch {
+                        // Keep the failed file visible in the loader while the
+                        // authoritative catalog remains available to the UI.
+                    }
+                    await self?.finishSyncFile(remote.name)
+                }
+                await self?.reconcileRemotePackages(metadataByDigest: metadataByDigest)
+                await self?.finishRemoteSync(showCompletionAlert: showCompletionAlert, patchCount: onyxPatches.count)
+            } catch {
+                await self?.failRemoteSync()
+            }
+        }
+    }
+
+    private func hasNewRemoteFiles(_ patches: [RemotePatch]) -> Bool {
+        patches.contains { existingPackageURL(matchingDigest: $0.sha256) == nil }
+    }
+
+    private func setRemoteSyncing(_ value: Bool) {
+        isRemoteSyncing = value
+    }
+
+    private func manifestFingerprint(for manifest: VesperDashManifest) -> String {
+        manifest.patches.map {
+            [$0.id, $0.name, $0.filename, $0.sha256, $0.bundle_id, $0.target_path,
+             $0.normalizedTargetPaths.joined(separator: "\u{1F}"),
+             $0.category ?? "", $0.version, $0.download_url, $0.enabled.description,
+             $0.paused.description].joined(separator: "|")
+        }.joined(separator: "\n")
+    }
+
+    private func shouldProcessManifest(_ fingerprint: String) -> Bool {
+        if lastManifestFingerprint == fingerprint && hasCompletedInitialSync {
+            isBusy = false
+            isRemoteSyncing = false
+            return false
+        }
+        lastManifestFingerprint = fingerprint
+        return true
+    }
+
+    private func beginSyncFiles(_ names: [String]) {
+        syncFileNames = names
+        syncFinishedFileNames = []
+    }
+
+    private func beginSyncFile(_ name: String) {
+        syncCurrentFile = name
+    }
+
+    private func finishSyncFile(_ name: String) {
+        syncFinishedFileNames.insert(name)
+    }
+
+    /// The remote catalog is authoritative. This one-time migration removes
+    /// packages/workspaces from older builds before the current manifest is
+    /// downloaded, so stale UUIDs and metadata cannot win lookup.
+    private func performAuthoritativeResetIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: Self.authoritativeResetKey) else { return }
+        let fileManager = FileManager.default
+        if let root = try? PatchProjectLibrary.packageRootURL(fileManager: fileManager) {
+            for url in (try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+                try? fileManager.removeItem(at: url)
+            }
+        }
+        if let root = try? PatchWorkspaceService.patchesRootURL(fileManager: fileManager) {
+            for url in (try? fileManager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+                try? fileManager.removeItem(at: url)
+            }
+        }
+        remoteCategories = [:]
+        remoteImageURLs = [:]
+        remoteStatusTexts = [:]
+        remoteOrders = [:]
+        remoteBundleIDs = [:]
+        remoteEntries = []
+        defaults.removeObject(forKey: Self.remoteEntriesKey)
+        defaults.removeObject(forKey: Self.remoteCategoriesKey)
+        defaults.removeObject(forKey: Self.remoteImagesKey)
+        defaults.removeObject(forKey: Self.remoteStatusesKey)
+        defaults.removeObject(forKey: Self.remoteOrdersKey)
+        defaults.removeObject(forKey: Self.remoteBundlesKey)
+        defaults.set(false, forKey: Self.initialSyncCompletedKey)
+        reload()
+        defaults.set(true, forKey: Self.authoritativeResetKey)
+    }
+
+    private func finishRemoteSync(showCompletionAlert: Bool = true, patchCount: Int = 0) {
+        reload()
+        isBusy = false
+        isRemoteSyncing = false
+        hasCompletedInitialSync = true
+        UserDefaults.standard.set(true, forKey: Self.initialSyncCompletedKey)
+        remoteSyncMessage = "REMOTE DATA: UPDATED • \(patchCount) PATCH\(patchCount == 1 ? "" : "ES")"
+        if showCompletionAlert {
+            alert = PatchStoreAlert(titleKey: "common.done", messageKey: "patch.imported_message")
+        }
+    }
+
+    private func applyRemoteState(paused: Bool) {
+        isRemoteDisabled = paused
+    }
+
+    private func applyRemoteEntries(_ entries: [RemotePatch]) {
+        var seenDigests = Set<String>()
+        remoteEntries = entries.filter { entry in
+            entry.normalizedProduct == "ONYX" && seenDigests.insert(entry.sha256.lowercased()).inserted
+        }
+        if let data = try? JSONEncoder().encode(remoteEntries) {
+            UserDefaults.standard.set(data, forKey: Self.remoteEntriesKey)
+        }
+    }
+
+    func remoteEntries(category: String, bundleID: String) -> [RemotePatch] {
+        remoteEntries
+            .filter { $0.enabled && !$0.paused && $0.normalizedCategory == category && $0.bundle_id == bundleID }
+            .sorted {
+                if $0.normalizedOrder != $1.normalizedOrder { return $0.normalizedOrder < $1.normalizedOrder }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+    }
+
+    func localFilename(for remote: RemotePatch) -> String? {
+        items.first { item in
+            digest(for: item).caseInsensitiveCompare(remote.sha256) == .orderedSame
+        }?.packageURL.lastPathComponent
+    }
+
+    func localItem(for packageFilename: String, targetBundleID: String) -> PatchLibraryItem? {
+        let remote = remoteEntries.first(where: {
+            $0.filename.caseInsensitiveCompare(packageFilename) == .orderedSame &&
+            $0.bundle_id == targetBundleID
+        })
+
+        if let remote {
+            if let digestMatch = items.first(where: { item in
+                digest(for: item).caseInsensitiveCompare(remote.sha256) == .orderedSame
+            }) {
+                return digestMatch
+            }
+        }
+
+        // A filename is only safe when the decoded project explicitly targets
+        // this bundle. Normal and Max can legitimately share a filename.
+        return items.first { item in
+            guard item.packageURL.lastPathComponent.caseInsensitiveCompare(packageFilename) == .orderedSame else {
+                return false
+            }
+            return item.project?.allBundleIdentifiers.contains(targetBundleID) == true
+        }
+    }
+
+    private func digest(for item: PatchLibraryItem) -> String {
+        let key = item.packageURL.standardizedFileURL.path
+        if let cached = digestCache[key] { return cached }
+        guard let data = try? PatchProjectLibrary.readPackage(at: item.packageURL) else { return "" }
+        let value = VesperDashDigest.hex(data)
+        digestCache[key] = value
+        return value
+    }
+
+    func remoteCategory(for item: PatchLibraryItem) -> String {
+        remoteCategories[item.packageURL.standardizedFileURL.path] ?? "aim"
+    }
+
+    func hasRemoteMetadata(for item: PatchLibraryItem) -> Bool {
+        remoteCategories[item.packageURL.standardizedFileURL.path] != nil
+    }
+
+    func remoteImageURL(for item: PatchLibraryItem) -> URL? {
+        remoteImageURLs[item.packageURL.standardizedFileURL.path]
+    }
+
+    func remoteStatusText(for item: PatchLibraryItem) -> String {
+        let value = remoteStatusTexts[item.packageURL.standardizedFileURL.path] ?? ""
+        return value.isEmpty ? "NO STATUS" : value
+    }
+
+    func remoteOrder(for item: PatchLibraryItem) -> Int {
+        remoteOrders[item.packageURL.standardizedFileURL.path] ?? 1000
+    }
+
+    private func reconcileRemotePackages(metadataByDigest: [String: (category: String, imageURL: URL?, statusText: String, sortOrder: Int)]) {
+        var categories: [String: String] = [:]
+        var imageURLs: [String: URL] = [:]
+        var statusTexts: [String: String] = [:]
+        var orders: [String: Int] = [:]
+        var seenDigests = Set<String>()
+        for item in PatchProjectLibrary.load() {
+            let digest = self.digest(for: item)
+            guard !digest.isEmpty else { continue }
+            if let metadata = metadataByDigest[digest], seenDigests.insert(digest).inserted {
+                let path = item.packageURL.standardizedFileURL.path
+                categories[path] = metadata.category
+                if let imageURL = metadata.imageURL {
+                    imageURLs[path] = imageURL
+                }
+                statusTexts[path] = metadata.statusText
+                orders[path] = metadata.sortOrder
+            } else {
+                try? PatchProjectLibrary.delete(item)
+            }
+        }
+        remoteCategories = categories
+        remoteImageURLs = imageURLs
+        remoteStatusTexts = statusTexts
+        remoteOrders = orders
+        let defaults = UserDefaults.standard
+        defaults.set(categories, forKey: Self.remoteCategoriesKey)
+        defaults.set(statusTexts, forKey: Self.remoteStatusesKey)
+        defaults.set(orders, forKey: Self.remoteOrdersKey)
+        defaults.set(imageURLs.mapValues(\.absoluteString), forKey: Self.remoteImagesKey)
+        defaults.set(remoteBundleIDs, forKey: Self.remoteBundlesKey)
+    }
+
+    private func recordRemoteBundleID(remoteBundleID: String, filename: String) {
+        remoteBundleIDs[filename] = remoteBundleID
+    }
+
+    func remoteBundleID(for item: PatchLibraryItem) -> String? {
+        if let bundleID = remoteBundleIDs[item.packageURL.lastPathComponent] {
+            return bundleID
+        }
+        let digest = self.digest(for: item)
+        return remoteEntries.first { $0.sha256.caseInsensitiveCompare(digest) == .orderedSame }?.bundle_id
+    }
+
+    func remoteTargetPath(for item: PatchLibraryItem, targetBundleID: String) -> String? {
+        let digest = self.digest(for: item)
+        let remote = remoteEntries.first(where: {
+            $0.sha256.caseInsensitiveCompare(digest) == .orderedSame &&
+            $0.bundle_id == targetBundleID
+        }) ?? remoteEntries.first(where: {
+            $0.bundle_id == targetBundleID &&
+            $0.name.caseInsensitiveCompare(item.displayName) == .orderedSame
+        })
+        guard let remote else {
+            // A package can be selected before the first catalog metadata pass
+            // finishes. Recover only AIM/Magic packages here; Hologram must
+            // keep its package target and never receive the cache_res target.
+            let name = item.displayName.lowercased()
+            guard name.contains("aim") || name.contains("magic") else { return nil }
+            return "Documents/contentcache/Compulsory/ios/gameassetbundles/cache_res.GkLlYqzsX4AtTdE55sDMRh9s-JOI~3D"
+        }
+
+        // All Hologram weapon variants use the active Optional shaders asset.
+        // Never inherit an old AIM/cache_res path for this category.
+        if remote.normalizedCategory == "hologram" {
+            return "Documents/contentcache/Optional/ios/gameassetbundles/shaders.P0K3UG2TfecMBhWMMV~2Fu8ReudIk~3D"
+        }
+
+        // Keep the old working behavior: AIM receives the exact target_path
+        // currently published by the server, including its case-sensitive name.
+        return remote.target_path
+    }
+
+    private func failRemoteSync() {
+        isBusy = false
+        isRemoteSyncing = false
+        remoteSyncMessage = "REMOTE DATA: CHECK FAILED • RETRYING"
+        alert = PatchStoreAlert(titleKey: "common.failed", messageKey: "patch.error.remote_import")
     }
 
     func create(project: PatchProject, password: String?) {
@@ -282,6 +681,12 @@ final class PatchProjectStore: ObservableObject {
 
     private func existingPackageURL(for packageID: UUID) -> URL? {
         items.first(where: { $0.id == packageID })?.packageURL
+    }
+
+    private func existingPackageURL(matchingDigest digest: String) -> URL? {
+        items.first { item in
+            self.digest(for: item).caseInsensitiveCompare(digest) == .orderedSame
+        }?.packageURL
     }
 
     private nonisolated static func persistImportedPackage(

@@ -6,55 +6,162 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appState: AppState
     @State private var showCleaner = false
+    @State private var remoteSyncTask: Task<Void, Never>?
+    @State private var fileSafety: [String: Bool] = [:]
     @StateObject private var patchStore = PatchProjectStore()
     @State private var patchOperationBusy = false
     @State private var patchMessage = "READY — SELECT A PATCH"
     @State private var patchEnabled: [String: Bool] = [:]
-    @State private var fileSafety: [String: Bool] = [
-        "BODY.3105": true,
-        "BODYM.3105": true,
-        "DRAGM.3105": true,
-        "DRAGTH.3105": true,
-        "FFTH AIM NECK.3105": true,
-        "HEADM.3105": true,
-        "MAGICM.3105": true,
-        "NECKM.3105": true,
-        "144-FPS.3105": true
-    ]
-    private let fileNames: [String] = [
-        "BODY.3105", "BODYM.3105", "DRAGM.3105", "DRAGTH.3105",
-        "FFTH AIM NECK.3105", "HEADM.3105", "MAGICM.3105", "NECKM.3105", "144-FPS.3105"
-    ]
-    private let skinFileNames: [String] = [
-        "SKIN 1.3105", "SKIN 2.3105", "SKIN 3.3105", "SKIN 4.3105",
-        "SKIN 5.3105", "SKIN 6.3105", "SKIN 7.3105"
-    ]
-    private let normalPatchFiles = [
-        "FFTH AIM NECK.3105", "BODY.3105", "DRAGTH.3105", "144-FPS.3105"
-    ]
-    private let maxPatchFiles = [
-        "DRAGM.3105", "MAGICM.3105", "NECKM.3105"
-    ]
+    @AppStorage("keepPatchesActiveAfterExit") private var keepPatchesActiveAfterExit = true
+    private let fileNames: [String] = []
+    private let normalPatchFiles: [String] = []
+    private let maxPatchFiles: [String] = []
 
     var body: some View {
         TabView {
-            appTab(title: "FF Normal", icon: "scope") { normalTab }
-            appTab(title: "FF Max", icon: "flame.fill") { maxTab }
-            appTab(title: "TEXTURAS", icon: "sparkles") { modSkinsTab }
+            appTab(title: "AIM", icon: "scope") { aimTab }
+            appTab(title: "ESP", icon: "eye.fill") { espTab }
+            appTab(title: "HOLOGRAM", icon: "cube.transparent") { hologramTab }
+            appTab(title: "SKIN MOD", icon: "sparkles") { skinModTab }
+            appTab(title: "FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
+        .overlay {
+            if patchStore.isRemoteDisabled {
+                RemotePauseView()
+            }
+        }
+        .overlay {
+            if patchStore.isRemoteSyncing {
+                RemoteLoadingView(store: patchStore)
+            }
+        }
         .sheet(isPresented: $showCleaner) {
             CleanerView()
         }
         .sheet(item: $patchStore.passwordRequest, onDismiss: patchStore.cancelUnlock) { _ in
             PatchUnlockPrompt(store: patchStore)
         }
-        .onAppear { syncPatchStates() }
+        .onAppear {
+            syncPatchStates()
+            patchStore.syncVesperDash(showCompletionAlert: false, showProgress: true)
+            startRemoteStateChecks()
+        }
+        .onDisappear {
+            remoteSyncTask?.cancel()
+            remoteSyncTask = nil
+            // Do not restore patches here. When this option is enabled, the
+            // package remains active until the user switches it OFF manually.
+            if keepPatchesActiveAfterExit {
+                log("patch: leaving app without automatic restore")
+            }
+        }
         .onChange(of: scenePhase) { phase in
             guard phase == .active, !patchOperationBusy else { return }
             syncPatchStates()
             patchMessage = "READY — SELECT A PATCH"
+        }
+    }
+
+    private func startRemoteStateChecks() {
+        guard remoteSyncTask == nil else { return }
+        remoteSyncTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(4))
+                guard !Task.isCancelled else { return }
+                patchStore.syncVesperDash(showCompletionAlert: false, showProgress: false)
+            }
+        }
+    }
+
+    private struct RemotePauseView: View {
+        var body: some View {
+            ZStack {
+                Color.black.opacity(0.94).ignoresSafeArea()
+                VStack(spacing: 18) {
+                    Image(systemName: "pause.circle.fill")
+                        .font(.system(size: 64))
+                        .foregroundStyle(.orange)
+                    Text("SERVICE PAUSED")
+                        .font(.system(size: 26, weight: .black, design: .rounded))
+                    Text("This IPA has been paused by the administrator. Try again later.")
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .padding(.horizontal, 28)
+                }
+                .foregroundStyle(.white)
+            }
+            .allowsHitTesting(true)
+        }
+    }
+
+    private struct RemoteLoadingView: View {
+        @ObservedObject var store: PatchProjectStore
+        @State private var spinnerRotation = 0.0
+
+        var body: some View {
+            ZStack {
+                LinearGradient(
+                    colors: [Color.purple.opacity(0.96), Color(red: 0.08, green: 0.01, blue: 0.16)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
+                VStack(spacing: 18) {
+                    VStack(spacing: 7) {
+                        Text("DOWNLOAD RESOURCE FROM SERVER")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .multilineTextAlignment(.center)
+                        Text(progressText)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(AppTheme.accent)
+                    }
+                    .foregroundStyle(.white)
+
+                    ProgressView(value: progress)
+                        .tint(AppTheme.accent)
+                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(store.syncFileNames, id: \.self) { name in
+                            HStack(spacing: 9) {
+                                Image(systemName: store.syncFinishedFileNames.contains(name) ? "checkmark.circle.fill" : (store.syncCurrentFile == name ? "arrow.down.circle.fill" : "circle"))
+                                    .foregroundStyle(store.syncFinishedFileNames.contains(name) ? .green : (store.syncCurrentFile == name ? AppTheme.accent : .white.opacity(0.35)))
+                                    .rotationEffect(.degrees(store.syncCurrentFile == name && !store.syncFinishedFileNames.contains(name) ? spinnerRotation : 0))
+                                Text(name)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.white.opacity(store.syncFinishedFileNames.contains(name) ? 0.55 : 0.95))
+                                    .lineLimit(1)
+                                Spacer()
+                            }
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .padding(28)
+            }
+            .allowsHitTesting(true)
+            .onAppear {
+                spinnerRotation = 0
+                withAnimation(.linear(duration: 0.85).repeatForever(autoreverses: false)) {
+                    spinnerRotation = 360
+                }
+            }
+        }
+
+        private var progress: Double {
+            guard !store.syncFileNames.isEmpty else { return 0 }
+            return Double(store.syncFinishedFileNames.count) / Double(store.syncFileNames.count)
+        }
+
+        private var progressText: String {
+            let total = store.syncFileNames.count
+            let done = store.syncFinishedFileNames.count
+            guard total > 0 else { return store.syncCurrentFile }
+            return "\(done)/\(total) FILES • \(store.syncCurrentFile)"
         }
     }
 
@@ -65,6 +172,7 @@ struct ContentView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
                         brandHeader
+                        patchStatusBanner
                         content()
                     }
                     .padding(.horizontal, 16)
@@ -78,44 +186,62 @@ struct ContentView: View {
         .tabItem { Label(title, systemImage: icon) }
     }
 
-    private var normalTab: some View {
+    private var patchStatusBanner: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("INJECT STATUS")
+                .font(.system(size: 10, weight: .black, design: .rounded))
+                .tracking(1.2)
+                .foregroundStyle(AppTheme.accent)
+            Text(patchMessage)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(AppTheme.accent.opacity(0.42), lineWidth: 1))
+    }
+
+    private var aimTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "FF NORMAL", subtitle: "AIM CONTROL", icon: "scope")
+            gameIntro(title: "AIM", subtitle: "REMOTE AIM PATCHES", icon: "scope")
             patchOptions(
                 files: normalPatchFiles,
+                category: "aim",
+                sectionTitle: "FF NORMAL",
                 targetTitle: "FREE FIRE • NORMAL",
                 targetBundleID: "com.dts.freefireth"
             )
         }
     }
 
-    private var modSkinsTab: some View {
+    private var espTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "TEXTURAS", subtitle: "FF NORMAL • COLECCIÓN DE TEXTURAS", icon: "sparkles")
-            Text("Elige una textura y actívala o desactívala. Estas texturas son para FF Normal.")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.62))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            ForEach(1...7, id: \.self) { number in
-                skinCard(number: number)
-            }
+            gameIntro(title: "ESP", subtitle: "REMOTE ESP PATCHES", icon: "eye.fill")
+            patchOptions(files: [], category: "esp", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
-    private var maxTab: some View {
+    private var hologramTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "FF MAX", subtitle: "AIM CONTROL", icon: "flame.fill")
-            patchOptions(
-                files: maxPatchFiles,
-                targetTitle: "FREE FIRE • MAX",
-                targetBundleID: "com.dts.freefiremax"
-            )
+            gameIntro(title: "HOLOGRAM", subtitle: "REMOTE HOLOGRAM PATCHES", icon: "cube.transparent")
+            patchOptions(files: [], category: "hologram", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
+        }
+    }
+
+    private var skinModTab: some View {
+        VStack(spacing: 16) {
+            gameIntro(title: "SKIN MOD", subtitle: "REMOTE SKIN PATCHES", icon: "sparkles")
+            patchOptions(files: [], category: "skin", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var fileStatusTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "FILE STATUS", subtitle: "LOCAL SAFETY CHECK", icon: "doc.badge.gearshape")
+            gameIntro(title: "FILE STATUS", subtitle: "REMOTE STATUS CENTER", icon: "doc.badge.gearshape")
             fileStatusPanel
         }
     }
@@ -125,36 +251,80 @@ struct ContentView: View {
             HStack {
                 panelTitle("PATCH FILES", icon: "checkmark.shield.fill")
                 Spacer()
-                Text("LOCAL")
+                Text("ONYX ONLINE")
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
 
-            ForEach(fileNames, id: \.self) { filename in
-                HStack(spacing: 12) {
-                    Image(systemName: fileSafety[filename, default: true] ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(fileSafety[filename, default: true] ? AppTheme.secondaryAccent : AppTheme.accent)
-                    Text(patchDisplayName(for: filename))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+            HStack(spacing: 12) {
+                Image(systemName: keepPatchesActiveAfterExit ? "lock.shield.fill" : "lock.open")
+                    .foregroundStyle(keepPatchesActiveAfterExit ? AppTheme.secondaryAccent : AppTheme.paper.opacity(0.55))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("KEEP PATCH ACTIVE AFTER EXIT")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                    Spacer()
-                    Button(fileSafety[filename, default: true] ? "SAFE" : "UNSAFE") {
-                        fileSafety[filename, default: true].toggle()
-                    }
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(fileSafety[filename, default: true] ? AppTheme.secondaryAccent : AppTheme.accent)
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(AppTheme.ink.opacity(0.7), in: Capsule())
+                    Text("OFF only manually — no automatic restore when leaving the app")
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundStyle(AppTheme.paper.opacity(0.55))
                 }
-                .padding(.vertical, 8)
-                Divider().overlay(AppTheme.paper.opacity(0.1))
+                Spacer()
+                Toggle("", isOn: $keepPatchesActiveAfterExit)
+                    .labelsHidden()
+                    .tint(AppTheme.secondaryAccent)
+            }
+            .padding(12)
+            .background(AppTheme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            if patchStore.remoteEntries.isEmpty {
+                Text("NO ONLINE ONYX FILES")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.paper.opacity(0.5))
+                    .padding(.vertical, 14)
+            } else {
+                ForEach(patchStore.remoteEntries.filter { $0.bundle_id == "com.dts.freefireth" }.sorted { first, second in
+                    if first.normalizedCategory != second.normalizedCategory { return first.normalizedCategory < second.normalizedCategory }
+                    if first.game != second.game { return first.game < second.game }
+                    if first.normalizedOrder != second.normalizedOrder { return first.normalizedOrder < second.normalizedOrder }
+                    return first.name.localizedCaseInsensitiveCompare(second.name) == .orderedAscending
+                }) { remote in
+                    HStack(spacing: 12) {
+                        if let imageURL = VesperDashRemoteSync.validImageURL(for: remote) {
+                            AsyncImage(url: imageURL) { phase in
+                                if let image = phase.image { image.resizable().scaledToFill() }
+                                else if phase.error != nil { Image(systemName: "doc.fill").foregroundStyle(AppTheme.accent) }
+                                else { ProgressView().tint(AppTheme.secondaryAccent) }
+                            }
+                            .frame(width: 44, height: 44)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        } else {
+                            Image(systemName: "doc.fill")
+                                .foregroundStyle(AppTheme.secondaryAccent)
+                                .frame(width: 44, height: 44)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(remote.name)
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.paper)
+                            Text("#\(remote.normalizedOrder) • \(remote.normalizedCategory.uppercased()) • \(remote.game.uppercased())")
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.secondaryAccent)
+                        }
+                        Spacer()
+                        Text(remote.normalizedStatus)
+                            .font(.system(size: 10, weight: .black, design: .rounded))
+                            .foregroundStyle(AppTheme.paper)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(3)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(AppTheme.ink.opacity(0.7), in: Capsule())
+                    }
+                    .padding(.vertical, 8)
+                    Divider().overlay(AppTheme.paper.opacity(0.1))
+                }
             }
 
-            launchButton(title: "OPEN FF MAX", subtitle: "Free Fire MAX", color: AppTheme.accent, scheme: "freefiremax")
-
-            Text("OFFLINE STATUS • Stored locally. No online control.")
+            Text("STATUS IS CONTROLLED ONLY FROM ONYX ONLINE")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.52))
                 .padding(.top, 5)
@@ -162,319 +332,6 @@ struct ContentView: View {
         .padding(16)
         .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
-    }
-
-    private func gameIntro(title: String, subtitle: String, icon: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 25, weight: .black))
-                .foregroundStyle(AppTheme.accent)
-                .frame(width: 54, height: 54)
-                .background(AppTheme.paper, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 22, weight: .black, design: .rounded)).foregroundStyle(AppTheme.paper)
-                Text(subtitle).font(.system(size: 10, weight: .bold, design: .rounded)).tracking(1.5).foregroundStyle(AppTheme.secondaryAccent)
-            }
-            Spacer()
-        }
-        .padding(16)
-        .background(
-            LinearGradient(colors: [AppTheme.referenceCard, AppTheme.ink.opacity(0.88)], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-        )
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.28), lineWidth: 1))
-        .shadow(color: AppTheme.secondaryAccent.opacity(0.12), radius: 18, y: 8)
-    }
-
-    private var brandHeader: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("EXTERNAL DYALI")
-                    .font(.system(size: 25, weight: .black, design: .rounded))
-                    .tracking(3)
-                    .foregroundStyle(AppTheme.paper)
-                Text("RESELLER ONYXX")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(1.7)
-                    .foregroundStyle(AppTheme.accent)
-            }
-
-            Spacer()
-            ZStack {
-                Circle().fill(AppTheme.accent.opacity(0.16)).frame(width: 54, height: 54).blur(radius: 9)
-                Image(systemName: "bolt.horizontal.fill")
-                    .font(.system(size: 22, weight: .black))
-                    .foregroundStyle(AppTheme.accent)
-                    .frame(width: 46, height: 46)
-                    .background(.ultraThinMaterial, in: Circle())
-                    .overlay(Circle().stroke(AppTheme.accent.opacity(0.65), lineWidth: 1))
-                    .shadow(color: AppTheme.accent.opacity(0.45), radius: 12)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial.opacity(0.72), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(AppTheme.accent.opacity(0.28), lineWidth: 1))
-        .shadow(color: AppTheme.accent.opacity(0.14), radius: 18, y: 7)
-    }
-
-    private var devicePanel: some View {
-        VStack(spacing: 0) {
-            panelTitle("DEVICE STATUS", icon: "shield.lefthalf.filled")
-            statusRow(icon: "apple.logo", title: "iOS", value: AppInfo.osVersion, color: AppTheme.secondaryAccent)
-            statusRow(icon: "iphone", title: "Device", value: AppInfo.displayMachineName, color: AppTheme.secondaryAccent)
-            statusRow(icon: "checkmark.seal.fill", title: "Support", value: appState.isSupported ? "SUPPORTED" : "UNSUPPORTED", color: appState.isSupported ? .green : .red)
-        }
-        .padding(16)
-        .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.32), lineWidth: 1))
-    }
-
-    private var externalChannelCard: some View {
-        Button {
-            guard let url = URL(string: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17") else { return }
-            UIApplication.shared.open(url)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "message.fill")
-                    .foregroundStyle(AppTheme.secondaryAccent)
-                    .frame(width: 32, height: 32)
-                    .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("WHATSAPP CHANNEL")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                        Text("Jefry Ventas")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.secondaryAccent)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .foregroundStyle(AppTheme.secondaryAccent)
-            }
-            .padding(14)
-            .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.28), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func patchOptions(
-        files: [String],
-        targetTitle: String,
-        targetBundleID: String
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                panelTitle("PATCH OPTIONS", icon: "bolt.fill")
-                Spacer()
-                Text("SELECT TO ENABLE")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.45))
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(files.enumerated()), id: \.element) { index, filename in
-                    patchCard(
-                        name: patchDisplayName(for: filename),
-                        target: targetTitle,
-                        package: filename,
-                        color: index.isMultiple(of: 2) ? AppTheme.accent : AppTheme.secondaryAccent,
-                        state: patchBinding(for: filename),
-                        targetBundleID: targetBundleID
-                    )
-                }
-            }
-
-            HStack(spacing: 8) {
-                Circle().fill(patchMessage.localizedCaseInsensitiveContains("successful") ? .green : AppTheme.accent).frame(width: 7, height: 7)
-                Text(patchOperationBusy ? "PROCESSING PATCH…" : patchMessage)
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(2)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(AppTheme.ink.opacity(0.55), in: Capsule())
-        }
-    }
-
-    private func patchCard(
-        name: String,
-        target: String,
-        package: String,
-        color: Color,
-        state: Binding<Bool>,
-        targetBundleID: String
-    ) -> some View {
-        PatchOptionCard(name: name, target: target, color: color, isEnabled: state, isBusy: patchOperationBusy) {
-            togglePatch(
-                packageFilename: package,
-                state: state,
-                targetBundleID: targetBundleID
-            )
-        }
-    }
-
-    private func patchBinding(for filename: String) -> Binding<Bool> {
-        Binding(
-            get: { patchEnabled[filename, default: false] },
-            set: { patchEnabled[filename] = $0 }
-        )
-    }
-
-    private func patchDisplayName(for filename: String) -> String {
-        if filename == "144-FPS.3105" { return "144 FPS" }
-        if filename == "FFTH AIM NECK.3105" { return "CUELLO" }
-        if filename == "BODY.3105" { return "AIMBOT PECHO" }
-        if filename == "DRAGTH.3105" { return "HEAD" }
-        if filename == "DRAGM.3105" { return "HEAD" }
-        if filename == "MAGICM.3105" { return "BALAS MÁGICAS" }
-        if filename == "NECKM.3105" { return "CUELLO" }
-        if filename == "HEADM.3105" {
-            return "AIMHEAD"
-        }
-        return filename.replacingOccurrences(of: ".3105", with: "")
-            .replacingOccurrences(of: " AIM ", with: " • ")
-            .replacingOccurrences(of: "M", with: " M")
-            .replacingOccurrences(of: "TH", with: " TH")
-    }
-
-    private func skinCard(number: Int) -> some View {
-        let package = "SKIN \(number).3105"
-        let imageName = String(format: "Skin_%02d", number)
-        let color = number.isMultiple(of: 2) ? AppTheme.secondaryAccent : AppTheme.accent
-
-        return HStack(spacing: 13) {
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 76, height: 76)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(color.opacity(0.62), lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("TEXTURA \(String(format: "%02d", number))")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("FF NORMAL • TEXTURA")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .tracking(0.7)
-                    .foregroundStyle(color)
-                Text(patchEnabled[package, default: false] ? "ACTIVE" : "READY")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.52))
-            }
-
-            Spacer(minLength: 4)
-
-            VStack(spacing: 4) {
-                Text(patchEnabled[package, default: false] ? "ON" : "OFF")
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundStyle(patchEnabled[package, default: false] ? AppTheme.secondaryAccent : .white.opacity(0.5))
-                Toggle("", isOn: Binding(
-                    get: { patchEnabled[package, default: false] },
-                    set: { _ in
-                        // Skins are Normal-only packages. Keep this explicit so
-                        // a previous Max patch selection can never retarget one.
-                        togglePatch(
-                            packageFilename: package,
-                            state: patchBinding(for: package),
-                            targetBundleID: "com.dts.freefireth"
-                        )
-                    }
-                ))
-                .labelsHidden()
-                .tint(color)
-                .disabled(patchOperationBusy)
-            }
-        }
-        .padding(10)
-        .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 19, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 19, style: .continuous).stroke(color.opacity(0.28), lineWidth: 1))
-        .opacity(patchOperationBusy ? 0.58 : 1)
-    }
-
-    private var gameLaunchPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            panelTitle("LAUNCH GAME", icon: "arrow.up.forward.app.fill")
-            HStack(spacing: 12) {
-                launchButton(title: "FF NORMAL", subtitle: "Free Fire Normal", color: AppTheme.accent, scheme: "freefireth")
-                lockedLaunchButton(title: "FF MAX", subtitle: "Locked • Coming Soon", color: AppTheme.secondaryAccent)
-            }
-            Button {
-                showCleaner = true
-            } label: {
-                Label("Clean Cache & Temp", systemImage: "trash.slash.fill")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(AppTheme.accent.opacity(0.52), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open cache and temporary files cleaner")
-        }
-    }
-
-    private func launchButton(title: String, subtitle: String, color: Color, scheme: String) -> some View {
-        Button { openGame(scheme: scheme) } label: {
-            VStack(alignment: .leading, spacing: 7) {
-                Image(systemName: "arrow.up.right.square.fill")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(color)
-                Text(title)
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(subtitle)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-            .padding(.horizontal, 14)
-            .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(color.opacity(0.38), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func lockedLaunchButton(title: String, subtitle: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(color.opacity(0.72))
-            Text(title)
-                .font(.system(size: 13, weight: .black, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-            Text(subtitle)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(color.opacity(0.72))
-        }
-        .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
-        .padding(.horizontal, 14)
-        .background(AppTheme.ink.opacity(0.45), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(color.opacity(0.24), lineWidth: 1))
-        .opacity(0.72)
-        .accessibilityLabel("FF MAX locked, coming soon")
-    }
-
-    private var footerStatus: some View {
-        HStack(spacing: 10) {
-            Circle().fill(AppTheme.secondaryAccent).frame(width: 9, height: 9).shadow(color: AppTheme.accent, radius: 6)
-            Text("SISTEMA PRONTO")
-                .font(.system(size: 10, weight: .black, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(.white.opacity(0.72))
-            Spacer()
-            Text("JEFRY • READY")
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundStyle(AppTheme.accent.opacity(0.8))
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
-        .background(AppTheme.referenceCard, in: Capsule())
-        .overlay(Capsule().stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
     }
 
     private func panelTitle(_ title: String, icon: String) -> some View {
@@ -498,27 +355,105 @@ struct ContentView: View {
         // Keep the skin toggles in sync as well. Previously only the normal
         // patch list was refreshed, so every skin returned to OFF after a
         // relaunch/background transition even when its receipt was active.
-        for filename in fileNames + skinFileNames {
-            patchEnabled[filename] = isPatchActive(filename)
+        for filename in normalPatchFiles {
+            patchEnabled[patchStateKey(filename, targetBundleID: "com.dts.freefireth")] = isPatchActive(filename, targetBundleID: "com.dts.freefireth")
+        }
+        for filename in maxPatchFiles {
+            patchEnabled[patchStateKey(filename, targetBundleID: "com.dts.freefiremax")] = isPatchActive(filename, targetBundleID: "com.dts.freefiremax")
+        }
+        for item in patchStore.items {
+            guard let bundleID = patchStore.remoteBundleID(for: item) else { continue }
+            guard DevicePatchService.latestReceipt(projectID: item.id, targetBundleID: bundleID) != nil else {
+                continue
+            }
+            let filename = item.packageURL.lastPathComponent
+            patchEnabled[patchStateKey(filename, targetBundleID: bundleID)] = true
         }
     }
 
-    private func isPatchActive(_ packageFilename: String) -> Bool {
-        patchItem(for: packageFilename)
-            .flatMap { DevicePatchService.latestReceipt(projectID: $0.id) } != nil
+    private func isPatchActive(_ packageFilename: String, targetBundleID: String) -> Bool {
+        patchItem(for: packageFilename, targetBundleID: targetBundleID)
+            .flatMap { DevicePatchService.latestReceipt(projectID: $0.id, targetBundleID: targetBundleID) } != nil
     }
 
-    private func patchItem(for packageFilename: String) -> PatchLibraryItem? {
-        patchStore.items.first { item in
+    private func patchItem(for packageFilename: String, targetBundleID: String = "com.dts.freefireth") -> PatchLibraryItem? {
+        if let resolved = patchStore.localItem(for: packageFilename, targetBundleID: targetBundleID) {
+            return resolved
+        }
+        let requestedName = (packageFilename as NSString).deletingPathExtension
+        let wantsMax = targetBundleID == "com.dts.freefiremax"
+        let requestedKey = requestedName.uppercased().hasSuffix("M")
+            ? String(requestedName.dropLast()).uppercased()
+            : requestedName.uppercased()
+        return patchStore.items.first { item in
+            let localFilename = item.packageURL.lastPathComponent
+            if let data = try? PatchProjectLibrary.readPackage(at: item.packageURL) {
+                let digest = VesperDashDigest.hex(data)
+                if patchStore.remoteEntries.contains(where: {
+                    $0.bundle_id == targetBundleID &&
+                    digest.caseInsensitiveCompare($0.sha256) == .orderedSame
+                }) {
+                    return true
+                }
+            }
+            if localFilename.caseInsensitiveCompare(packageFilename) == .orderedSame {
+                if let remoteBundleID = patchStore.remoteBundleID(for: item) {
+                    return remoteBundleID == targetBundleID
+                }
+                return item.project?.allBundleIdentifiers.contains(targetBundleID) == true
+            }
+            guard matchesTargetBundle(item, targetBundleID: targetBundleID) else { return false }
             let storedName = item.packageURL.deletingPathExtension().lastPathComponent
             let canonicalName = storedName
                 .replacingOccurrences(of: "BundledPatch-", with: "", options: .caseInsensitive)
                 .replacingOccurrences(of: "xTop1 External File (", with: "", options: .caseInsensitive)
                 .trimmingCharacters(in: CharacterSet(charactersIn: ")"))
             let normalizedStoredName = (canonicalName as NSString).deletingPathExtension
-            let requestedName = (packageFilename as NSString).deletingPathExtension
-            return normalizedStoredName.caseInsensitiveCompare(requestedName) == .orderedSame
+            let storedKey = normalizedStoredName.uppercased()
+            let aliasedStoredKey: String
+            let gameSuffix = wantsMax ? "M" : ""
+            if storedKey.hasPrefix("BODY") {
+                aliasedStoredKey = "OBB" + gameSuffix
+            } else if storedKey.hasPrefix("DRAG") {
+                aliasedStoredKey = "DRAG" + gameSuffix
+            } else if storedKey.hasPrefix("MAGIC") {
+                aliasedStoredKey = "MAGIC" + gameSuffix
+            } else if storedKey.hasPrefix("WEAPON") {
+                aliasedStoredKey = "WEAPONS" + gameSuffix
+            } else {
+                aliasedStoredKey = storedKey
+            }
+            // The package filename is the authoritative UI-to-resource link.
+            // This is required for descriptive project names such as
+            // "3D WEAPONS" whose bundled resource is named WEAPONS.3105.
+            if normalizedStoredName.caseInsensitiveCompare(requestedName) == .orderedSame {
+                return true
+            }
+            if aliasedStoredKey == requestedName.uppercased() {
+                return true
+            }
+            let projectTargets = item.project?.allBundleIdentifiers ?? []
+            let hasRequestedBundle = projectTargets.contains(targetBundleID)
+            let isCacheResource = item.project?.directories.contains {
+                $0.relativePath.localizedCaseInsensitiveContains("cache_res")
+            } == true || item.project?.rules.contains {
+                $0.relativePath.localizedCaseInsensitiveContains("cache_res")
+            } == true
+            if requestedKey == "OBB", hasRequestedBundle, isCacheResource {
+                return true
+            }
+            let projectName = item.project?.name.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+            let storedIsMax = normalizedStoredName.uppercased().hasSuffix("M")
+            let projectKey = projectName.hasSuffix("M") ? String(projectName.dropLast()) : projectName
+            return projectKey == requestedKey && storedIsMax == wantsMax
         }
+    }
+
+    private func matchesTargetBundle(_ item: PatchLibraryItem, targetBundleID: String) -> Bool {
+        if let remoteBundleID = patchStore.remoteBundleID(for: item) {
+            return remoteBundleID == targetBundleID
+        }
+        return item.project?.allBundleIdentifiers.contains(targetBundleID) == true
     }
 
     private enum PatchActionResult {
@@ -527,25 +462,28 @@ struct ContentView: View {
         case unavailable(String)
     }
 
-    private func setPatchState(for packageFilename: String, enabled: Bool) {
-        patchEnabled[packageFilename] = enabled
+    private func setPatchState(for packageFilename: String, targetBundleID: String, enabled: Bool) {
+        patchEnabled[patchStateKey(packageFilename, targetBundleID: targetBundleID)] = enabled
     }
 
     private func togglePatch(
         packageFilename: String,
+        displayName: String,
         state: Binding<Bool>,
         targetBundleID: String = "com.dts.freefireth"
     ) {
         guard !patchOperationBusy else { return }
-        guard let item = patchItem(for: packageFilename) else {
+        patchStore.refreshBundledPackages()
+        guard let item = patchItem(for: packageFilename, targetBundleID: targetBundleID) else {
+            let available = patchStore.items.map { $0.packageURL.lastPathComponent }.sorted().joined(separator: ", ")
             patchMessage = "ERROR — PACKAGE NOT FOUND"
-            log("patch: package not found: \(packageFilename)")
+            log("patch: package not found: \(packageFilename); available=\(available)")
             return
         }
 
         let wasEnabled = state.wrappedValue
         patchOperationBusy = true
-        patchMessage = "PROCESSING — \(packageFilename)"
+        patchMessage = "PROCESSING — \(displayName)"
         let project = item.project
         let projectID = item.id
 
@@ -553,10 +491,13 @@ struct ContentView: View {
             let result: PatchActionResult
             do {
                 if wasEnabled {
-                    guard let receipt = DevicePatchService.latestReceipt(projectID: projectID) else {
+                    guard let receipt = DevicePatchService.latestReceipt(
+                        projectID: projectID,
+                        targetBundleID: targetBundleID
+                    ) else {
                         result = .unavailable("NO ACTIVE RECEIPT — NOTHING TO RESTORE")
                         DispatchQueue.main.async {
-                            self.setPatchState(for: packageFilename, enabled: false)
+                            self.setPatchState(for: packageFilename, targetBundleID: targetBundleID, enabled: false)
                             self.patchMessage = "OFF — NO ACTIVE PATCH FOUND"
                             self.patchOperationBusy = false
                         }
@@ -574,24 +515,32 @@ struct ContentView: View {
                         }
                         return
                     }
-                    _ = try DevicePatchService.apply(
-                        project: project.retargeted(to: targetBundleID)
-                    )
+                    // Same behavior as the known-working project: the
+                    // decoded package is the source of truth. Do not rebuild
+                    // or retarget its paths from remote metadata.
+                    log("patch: applying package unchanged package=\(packageFilename) target=\(project.rules.first?.relativePath ?? "none")")
+                    _ = try DevicePatchService.apply(project: project)
                     result = .applied
                 }
+            } catch let error as PatchPackageError {
+                if case .missingTarget(let path) = error {
+                    result = .unavailable("MISSING TARGET — \(path)")
+                } else {
+                    result = .unavailable("FAILED — \(error.localizedDescription)")
+                }
             } catch {
-                result = .unavailable("FAILED — \(String(describing: error))")
+                result = .unavailable("FAILED — \(error.localizedDescription)")
             }
 
             DispatchQueue.main.async {
                 switch result {
                 case .applied:
-                    self.setPatchState(for: packageFilename, enabled: true)
-                    self.patchMessage = "Inject Successful — \(packageFilename)"
+                    self.setPatchState(for: packageFilename, targetBundleID: targetBundleID, enabled: true)
+                    self.patchMessage = "Inject Successful — \(displayName)"
                     PatchAudioFeedback.bypassActivated()
                 case .restored:
-                    self.setPatchState(for: packageFilename, enabled: false)
-                    self.patchMessage = "Restore Successful — \(packageFilename)"
+                    self.setPatchState(for: packageFilename, targetBundleID: targetBundleID, enabled: false)
+                    self.patchMessage = "Restore Successful — \(displayName)"
                     PatchAudioFeedback.originalRestored()
                 case .unavailable(let message):
                     self.patchMessage = message
@@ -613,16 +562,32 @@ private struct PatchOptionCard: View {
     let name: String
     let target: String
     let color: Color
+    let imageURL: URL?
     @Binding var isEnabled: Bool
     let isBusy: Bool
     let action: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: "bolt.fill")
-                .font(.system(size: 15, weight: .black))
-                .foregroundStyle(color)
-                .frame(width: 24)
+            if let imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFill()
+                    } else if phase.error != nil {
+                        Image(systemName: "photo").foregroundStyle(color)
+                    } else {
+                        ProgressView().tint(color)
+                    }
+                }
+                .frame(width: 48, height: 48)
+                .background(Color.black.opacity(0.28))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            } else {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 15, weight: .black))
+                    .foregroundStyle(color)
+                    .frame(width: 24)
+            }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
@@ -744,7 +709,6 @@ struct AnimatedHyperBackdrop: View {
             RadialGradient(colors: [AppTheme.secondaryAccent.opacity(0.12), .clear], center: .bottomLeading, startRadius: 10, endRadius: 320)
             RadialGradient(colors: [Color.blue.opacity(0.055), .clear], center: .center, startRadius: 10, endRadius: 360)
             RadialGradient(colors: [Color.purple.opacity(0.035), .clear], center: .bottomTrailing, startRadius: 10, endRadius: 260)
-            EmberField()
             GridOverlay()
         }
     }
