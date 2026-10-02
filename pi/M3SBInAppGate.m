@@ -83,7 +83,12 @@ typedef NS_ENUM(NSInteger, M3SBGateState) {
     }
     NSString *cachedKey = [[M3SBV3TweakBridge shared] cachedLicenseKey];
     if (cachedKey.length) self.lastLicenseKey = cachedKey;
-    [self attemptFreeVersion];
+    NSString *cachedLicense = [[M3SBV3TweakBridge shared] cachedLicenseKey];
+    if (cachedLicense.length) {
+        [self restoreCachedAuthorization:cachedLicense];
+    } else {
+        [self showLicense];
+    }
 }
 
 - (void)buildCardIfNeeded {
@@ -257,6 +262,12 @@ typedef NS_ENUM(NSInteger, M3SBGateState) {
                 }
                 if ([info[@"valid"] boolValue] && ![info[@"allow_inject"] boolValue]) {
                     [weakSelf setBlocked:@"Injection has been disabled for this package."];
+                    return;
+                }
+                NSSet *securityFailureStatuses = [NSSet setWithObjects:@"injection_detected", @"injection_disabled", @"bad_signature", @"body_hash_mismatch", @"replay", @"signature_expired", @"signature_v3_required", nil];
+                if ([securityFailureStatuses containsObject:status]) {
+                    [[M3SBV3TweakBridge shared] clearCachedLicenseKey];
+                    [weakSelf setBlocked:@"Security verification failed."];
                     return;
                 }
                 NSString *cachedKey = [[M3SBV3TweakBridge shared] cachedLicenseKey];

@@ -441,7 +441,7 @@ static void M3SBDeleteCachedLicense(NSString *token) {
     self.licenseKey = licenseKey;
     dispatch_queue_t q = dispatch_get_main_queue();
     self.heartbeatTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, q);
-    dispatch_source_set_timer(self.heartbeatTimer, dispatch_time(DISPATCH_TIME_NOW, 30 * NSEC_PER_SEC), 30 * NSEC_PER_SEC, 1 * NSEC_PER_SEC);
+    dispatch_source_set_timer(self.heartbeatTimer, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC), 10 * NSEC_PER_SEC, 1 * NSEC_PER_SEC);
     __weak typeof(self) weakSelf = self;
     dispatch_source_set_event_handler(self.heartbeatTimer, ^{ [weakSelf signedHeartbeat]; });
     dispatch_resume(self.heartbeatTimer);
