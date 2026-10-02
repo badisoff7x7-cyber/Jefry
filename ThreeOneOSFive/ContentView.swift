@@ -20,14 +20,17 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            appTab(title: "AIM", icon: "scope") { aimTab }
-            appTab(title: "ESP", icon: "eye.fill") { espTab }
-            appTab(title: "HOLOGRAM", icon: "cube.transparent") { hologramTab }
-            appTab(title: "SKIN MOD", icon: "sparkles") { skinModTab }
-            appTab(title: "FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
+            appTab(title: "🎯 AIM", icon: "scope") { aimTab }
+            appTab(title: "👁 ESP", icon: "eye.fill") { espTab }
+            appTab(title: "🧊 HOLOGRAM", icon: "cube.transparent") { hologramTab }
+            appTab(title: "✨ SKIN MOD", icon: "sparkles") { skinModTab }
+            appTab(title: "📡 FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
+        .toolbarBackground(AppTheme.consoleBackground.opacity(0.96), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
         .overlay {
             if patchStore.isRemoteDisabled {
                 RemotePauseView()
