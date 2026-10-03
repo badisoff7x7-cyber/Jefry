@@ -25,6 +25,7 @@ struct ContentView: View {
             appTab(title: "🧊 HOLOGRAM", icon: "cube.transparent") { hologramTab }
             appTab(title: "✨ SKIN MOD", icon: "sparkles") { skinModTab }
             appTab(title: "📡 FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
+            appTab(title: "👤 DEVELOPER", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
@@ -255,7 +256,7 @@ struct ContentView: View {
             HStack {
                 panelTitle("PATCH FILES", icon: "checkmark.shield.fill")
                 Spacer()
-                Text("🌐 ONYX ONLINE")
+                Text("🌐 JEFRY ONLINE")
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
@@ -280,7 +281,7 @@ struct ContentView: View {
             .background(AppTheme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             if patchStore.remoteEntries.isEmpty {
-                Text("📭 NO ONLINE ONYX FILES")
+                Text("📭 NO ONLINE JEFRY FILES")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.paper.opacity(0.5))
                     .padding(.vertical, 14)
@@ -328,7 +329,7 @@ struct ContentView: View {
                 }
             }
 
-            Text("🔒 STATUS CONTROLLED BY ONYX ONLINE")
+            Text("🔒 STATUS CONTROLLED BY JEFRY ONLINE")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.52))
                 .padding(.top, 5)
@@ -363,7 +364,7 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("🖤 ONYX EXTERNAL")
+                Text("🖤 JEFRY EXTERNAL")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
@@ -415,10 +416,10 @@ struct ContentView: View {
                     .frame(width: 32, height: 32)
                     .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("ONYX EXTERNAL CHANNEL")
+                    Text("JEFRY EXTERNAL CHANNEL")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                    Text("t.me/VesperExtrenal")
+                    Text("Jefry External")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryAccent)
                 }
@@ -466,7 +467,7 @@ struct ContentView: View {
                     }
                 }
             } else {
-                Text("NO \(category.uppercased()) PATCHES — ADD FILES FROM ONYX ONLINE")
+                Text("NO \(category.uppercased()) PATCHES — ADD FILES FROM JEFRY ONLINE")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.5))
                     .padding(.vertical, 10)
@@ -568,7 +569,7 @@ struct ContentView: View {
                 .tracking(1.2)
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
-            Text("✅ ONYX READY")
+            Text("✅ JEFRY READY")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.accent.opacity(0.8))
         }
@@ -578,9 +579,21 @@ struct ContentView: View {
         .overlay(Capsule().stroke(AppTheme.secondaryAccent.opacity(0.25), lineWidth: 1))
     }
 
+    private var developerTab: some View {
+        VStack(spacing: 16) {
+            developerCard
+            developerDesignPicker
+            telegramCard
+            extrenalChannelCard
+            feedbackCard
+            devicePanel
+            developerCredits
+        }
+    }
+
     private var developerCredits: some View {
         VStack(spacing: 10) {
-            Text("🖤 ONYX EXTERNAL")
+            Text("🖤 JEFRY EXTERNAL")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.72))
                 .multilineTextAlignment(.center)
