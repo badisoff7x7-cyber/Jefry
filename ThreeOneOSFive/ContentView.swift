@@ -20,12 +20,12 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            appTab(title: "🎯 AIM", icon: "scope") { aimTab }
-            appTab(title: "👁 ESP", icon: "eye.fill") { espTab }
-            appTab(title: "🧊 HOLOGRAM", icon: "cube.transparent") { hologramTab }
-            appTab(title: "✨ SKIN MOD", icon: "sparkles") { skinModTab }
-            appTab(title: "📡 FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
-            appTab(title: "👤 DEVELOPER", icon: "person.crop.circle") { developerTab }
+            appTab(title: " AIM", icon: "scope") { aimTab }
+            appTab(title: " ESP", icon: "eye.fill") { espTab }
+            appTab(title: " HOLOGRAM", icon: "cube.transparent") { hologramTab }
+            appTab(title: " SKIN MOD", icon: "sparkles") { skinModTab }
+            appTab(title: " FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
+            appTab(title: " DEVELOPER", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
@@ -212,7 +212,7 @@ struct ContentView: View {
 
     private var aimTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "🎯 AIM", subtitle: "ONLINE AIM PATCHES", icon: "scope")
+            gameIntro(title: " AIM", subtitle: "ONLINE AIM PATCHES", icon: "scope")
             patchOptions(
                 files: normalPatchFiles,
                 category: "aim",
@@ -225,28 +225,28 @@ struct ContentView: View {
 
     private var espTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "👁 ESP", subtitle: "ONLINE ESP PATCHES", icon: "eye.fill")
+            gameIntro(title: " ESP", subtitle: "ONLINE ESP PATCHES", icon: "eye.fill")
             patchOptions(files: [], category: "esp", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var hologramTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "🧊 HOLOGRAM", subtitle: "ONLINE HOLOGRAM PATCHES", icon: "cube.transparent")
+            gameIntro(title: " HOLOGRAM", subtitle: "ONLINE HOLOGRAM PATCHES", icon: "cube.transparent")
             patchOptions(files: [], category: "hologram", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var skinModTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "✨ SKIN MOD", subtitle: "ONLINE SKIN PATCHES", icon: "sparkles")
+            gameIntro(title: " SKIN MOD", subtitle: "ONLINE SKIN PATCHES", icon: "sparkles")
             patchOptions(files: [], category: "skin", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
         }
     }
 
     private var fileStatusTab: some View {
         VStack(spacing: 16) {
-            gameIntro(title: "📡 FILE STATUS", subtitle: "ONLINE STATUS CENTER", icon: "doc.badge.gearshape")
+            gameIntro(title: " FILE STATUS", subtitle: "ONLINE STATUS CENTER", icon: "doc.badge.gearshape")
             fileStatusPanel
         }
     }
@@ -256,7 +256,7 @@ struct ContentView: View {
             HStack {
                 panelTitle("PATCH FILES", icon: "checkmark.shield.fill")
                 Spacer()
-                Text("🌐 JEFRY ONLINE")
+                Text(" JEFRY ONLINE")
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
@@ -281,7 +281,7 @@ struct ContentView: View {
             .background(AppTheme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             if patchStore.remoteEntries.isEmpty {
-                Text("📭 NO ONLINE JEFRY FILES")
+                Text(" NO ONLINE JEFRY FILES")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.paper.opacity(0.5))
                     .padding(.vertical, 14)
@@ -329,7 +329,7 @@ struct ContentView: View {
                 }
             }
 
-            Text("🔒 STATUS CONTROLLED BY JEFRY ONLINE")
+            Text(" STATUS CONTROLLED BY JEFRY ONLINE")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.52))
                 .padding(.top, 5)
@@ -364,11 +364,11 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("🖤 JEFRY EXTERNAL")
+                Text(" JEFRY EXTERNAL")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
-                Text("⚡ ONLINE PATCH CONTROL")
+                Text(" ONLINE PATCH CONTROL")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .tracking(1.7)
                     .foregroundStyle(AppTheme.accent)
@@ -569,7 +569,7 @@ struct ContentView: View {
                 .tracking(1.2)
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
-            Text("✅ JEFRY READY")
+            Text(" JEFRY READY")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.accent.opacity(0.8))
         }
@@ -582,31 +582,10 @@ struct ContentView: View {
     private var developerTab: some View {
         VStack(spacing: 16) {
             developerCard
-            telegramCard
             externalChannelCard
             feedbackCard
             devicePanel
         }
-    }
-
-    private var developerCredits: some View {
-        VStack(spacing: 10) {
-            Text("JEFRY EXTERNAL")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.72))
-                .multilineTextAlignment(.center)
-
-            Text("Official Jefry links")
-                .font(.system(size: 10, weight: .semibold, design: .rounded))
-                .foregroundStyle(AppTheme.secondaryAccent.opacity(0.85))
-
-            HStack(spacing: 10) {
-                channelButton(title: "JEFRY IOS • USER", url: "https://t.me/+5HHaZurHPA9hOWM8")
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
-        .padding(.bottom, 8)
     }
 
     private var developerCard: some View {
@@ -749,55 +728,6 @@ struct ContentView: View {
 
     private var developerBackground: Color {
         developerDesign.isMultiple(of: 2) ? AppTheme.referenceCard : developerAccent.opacity(0.16)
-    }
-
-    private var telegramCard: some View {
-        Button {
-            guard let url = URL(string: "https://t.me/+5HHaZurHPA9hOWM8") else { return }
-            UIApplication.shared.open(url)
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(AppTheme.paper)
-                    .frame(width: 48, height: 48)
-                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("DEVELOPER INFO")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .tracking(1.2)
-                        .foregroundStyle(AppTheme.secondaryAccent)
-                    Text("JEFRY IOS USER")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.paper)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(AppTheme.accent)
-            }
-            .padding(15)
-            .background(AppTheme.paper.opacity(0.11), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(AppTheme.accent.opacity(0.55), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Open Jefry IOS developer link")
-    }
-
-    private func channelButton(title: String, url: String) -> some View {
-        Button {
-            guard let destination = URL(string: url) else { return }
-            UIApplication.shared.open(destination)
-        } label: {
-            Label(title, systemImage: "paperplane.fill")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(AppTheme.accent.opacity(0.18), in: Capsule())
-                .overlay(Capsule().stroke(AppTheme.accent.opacity(0.42), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
     }
 
     private func panelTitle(_ title: String, icon: String) -> some View {
