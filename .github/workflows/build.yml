@@ -35,6 +35,10 @@ jobs:
           unzip -q build/HYper-Regedit-Key-Enabled-unsigned.ipa -d /tmp/hyper-ipa-check
           APP_PLIST="$(find /tmp/hyper-ipa-check/Payload -maxdepth 1 -name '*.app' -type d -print -quit)/Info.plist"
           test -f "$APP_PLIST"
+          if find "$(dirname "$APP_PLIST")" -type f -iname '*.3105' -print -quit | grep -q .; then
+            echo 'Patch payload found inside IPA; remote-only build must contain no .3105 files' >&2
+            exit 1
+          fi
           TOKEN="$(/usr/libexec/PlistBuddy -c 'Print :M3SB_PACKAGE_TOKEN' "$APP_PLIST")"
           SECRET="$(/usr/libexec/PlistBuddy -c 'Print :M3SB_HMAC_SECRET' "$APP_PLIST")"
           PACKAGE="$(/usr/libexec/PlistBuddy -c 'Print :M3SB_PACKAGE_NAME' "$APP_PLIST")"

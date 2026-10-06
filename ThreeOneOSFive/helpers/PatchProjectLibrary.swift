@@ -50,6 +50,19 @@ enum PatchProjectLibrary {
         return root
     }
 
+    static func removeBundledPackagesIfNeeded(fileManager: FileManager = .default) {
+        guard let root = try? packageRootURL(fileManager: fileManager),
+              let urls = try? fileManager.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
+              ) else { return }
+        for url in urls where url.pathExtension.lowercased() == "3105" &&
+            url.deletingPathExtension().lastPathComponent.hasPrefix(bundledFilenamePrefix) {
+            try? fileManager.removeItem(at: url)
+        }
+    }
+
     static func installBundledPackagesIfNeeded(
         bundle: Bundle = .main,
         fileManager: FileManager = .default

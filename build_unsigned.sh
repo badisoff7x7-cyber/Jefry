@@ -25,12 +25,12 @@ xcodebuild \
 
 APP="$ARCHIVE/Products/Applications/3105.app"
 test -d "$APP"
-PATCH_DIR="$APP/Patches"
-mkdir -p "$PATCH_DIR"
-for package in "$APP"/*.3105; do
-  [ -e "$package" ] || continue
-  mv "$package" "$PATCH_DIR/"
-done
+# Remote-only mode: never ship patch payloads inside the IPA.
+find "$APP" -type f -iname '*.3105' -delete
+if find "$APP" -type f -iname '*.3105' -print -quit | grep -q .; then
+  echo 'Refusing to build: patch payload found inside app bundle' >&2
+  exit 1
+fi
 
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable 3105" "$APP/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Set :CFBundlePackageType APPL" "$APP/Info.plist" || true

@@ -67,7 +67,7 @@ final class PatchProjectStore: ObservableObject {
     private var pendingUnlock: PendingUnlock?
 
     init() {
-        PatchProjectLibrary.installBundledPackagesIfNeeded()
+        PatchProjectLibrary.removeBundledPackagesIfNeeded()
         reload()
         hasCompletedInitialSync = UserDefaults.standard.bool(forKey: Self.initialSyncCompletedKey)
         let defaults = UserDefaults.standard
@@ -89,7 +89,7 @@ final class PatchProjectStore: ObservableObject {
     /// Reconcile bundled resources with Application Support after an app
     /// upgrade, then rebuild the in-memory package list.
     func refreshBundledPackages() {
-        PatchProjectLibrary.installBundledPackagesIfNeeded()
+        // Jefry packages are remote-only; never copy resources into the app sandbox.
         reload()
     }
 
