@@ -5,6 +5,7 @@ struct VesperDashManifest: Decodable {
     let global_paused: Bool
     let patches: [RemotePatch]
     let all_patches: [RemotePatch]?
+    let tenant: String?
 }
 
 struct RemotePatch: Codable, Identifiable {
@@ -52,7 +53,8 @@ struct RemotePatch: Codable, Identifiable {
 }
 
 enum VesperDashRemoteSync {
-    static let manifestURL = URL(string: "https://api.vesperdash.com/api/patches")!
+    static let tenant = "jefry"
+    static let manifestURL = URL(string: "https://api.vesperdash.com/api/patches?tenant=jefry")!
 
     static func fetchManifest() async throws -> VesperDashManifest {
         var request = URLRequest(url: manifestURL)

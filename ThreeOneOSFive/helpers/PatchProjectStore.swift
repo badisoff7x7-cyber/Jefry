@@ -113,18 +113,23 @@ final class PatchProjectStore: ObservableObject {
                 guard await self?.shouldProcessManifest(fingerprint) == true else {
                     return
                 }
-                let onyxPatches = (manifest.all_patches ?? manifest.patches).filter { $0.normalizedProduct == "ONYX" }
+                // The shared VesperDash API scopes Jefry by tenant. Keep the
+                // legacy ONYX filter only when talking to an older unscoped API.
+                let catalog = manifest.all_patches ?? manifest.patches
+                let jefryPatches = manifest.tenant?.lowercased() == "jefry"
+                    ? catalog
+                    : catalog.filter { $0.normalizedProduct == "ONYX" }
                 await self?.applyRemoteState(paused: manifest.global_paused)
-                await self?.applyRemoteEntries(onyxPatches)
-                let hasNewFiles = await self?.hasNewRemoteFiles(onyxPatches) ?? false
+                await self?.applyRemoteEntries(jefryPatches)
+                let hasNewFiles = await self?.hasNewRemoteFiles(jefryPatches) ?? false
                 await self?.setRemoteSyncing(showProgress || hasNewFiles)
-                await self?.beginSyncFiles(onyxPatches.map(\.name))
+                await self?.beginSyncFiles(jefryPatches.map(\.name))
                 guard !manifest.global_paused else {
                     await self?.finishRemoteSync(showCompletionAlert: showCompletionAlert, patchCount: 0)
                     return
                 }
                 var metadataByDigest: [String: (category: String, imageURL: URL?, statusText: String, sortOrder: Int)] = [:]
-                for remote in onyxPatches {
+                for remote in jefryPatches {
                     let digest = remote.sha256.lowercased()
                     if metadataByDigest[digest] == nil {
                         metadataByDigest[digest] = (
@@ -137,7 +142,7 @@ final class PatchProjectStore: ObservableObject {
                 }
                 let session = URLSession(configuration: .ephemeral)
                 defer { session.invalidateAndCancel() }
-                for remote in onyxPatches {
+                for remote in jefryPatches {
                     await self?.beginSyncFile(remote.name)
                     do {
                         if let localURL = await self?.existingPackageURL(matchingDigest: remote.sha256) {
@@ -187,7 +192,7 @@ final class PatchProjectStore: ObservableObject {
                     await self?.finishSyncFile(remote.name)
                 }
                 await self?.reconcileRemotePackages(metadataByDigest: metadataByDigest)
-                await self?.finishRemoteSync(showCompletionAlert: showCompletionAlert, patchCount: onyxPatches.count)
+                await self?.finishRemoteSync(showCompletionAlert: showCompletionAlert, patchCount: jefryPatches.count)
             } catch {
                 await self?.failRemoteSync()
             }
