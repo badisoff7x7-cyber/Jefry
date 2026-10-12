@@ -9,7 +9,6 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator();
     @StateObject private var vesperDashControl = VesperDashControl()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
-    @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var showWelcome = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -20,13 +19,6 @@ struct ThreeOneOSFiveApp: App {
 
     private var language: AppLanguage {
         AppLanguage(rawValue: languageCode) ?? .english
-    }
-
-    private func checkForUpdate() {
-        Task {
-            guard let offer = await AppUpdateChecker.check() else { return }
-            await MainActor.run { updateOffer = offer }
-        }
     }
 
     var body: some Scene {
@@ -54,18 +46,6 @@ struct ThreeOneOSFiveApp: App {
                 .environmentObject(fileOperationCoordinator)
                 .environment(\.appLanguage, language)
                 .environment(\.locale, language.locale)
-            .alert(item: $updateOffer) { offer in
-                Alert(
-                    title: Text(language.text("update.title")),
-                    message: Text(language.text("update.message", offer.version)),
-                    primaryButton: .default(Text(language.text("update.agree"))) {
-                        UIApplication.shared.open(offer.url)
-                    },
-                    secondaryButton: .cancel(Text(language.text("update.dismiss"))) {
-                        AppUpdateChecker.dismiss(version: offer.version)
-                    }
-                )
-            }
             .onChange(of: licenseManager.isActive) { active in
                 guard active else { return }
                 withAnimation(.easeIn(duration: 0.22)) { showWelcome = true }
@@ -77,7 +57,6 @@ struct ThreeOneOSFiveApp: App {
                 vesperDashControl.start()
                 licenseManager.beginLaunchSession()
                 appState.detectSupport()
-                checkForUpdate()
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {

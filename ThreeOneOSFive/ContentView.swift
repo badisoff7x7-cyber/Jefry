@@ -20,10 +20,10 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
+            appTab(title: " AIM", icon: "scope") { aimTab }
             appTab(title: " HOLOGRAM", icon: "cube.transparent") { hologramTab }
             appTab(title: " SKIN MOD", icon: "sparkles") { skinModTab }
             appTab(title: " FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
-            appTab(title: " BABA", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
@@ -113,36 +113,15 @@ struct ContentView: View {
                 .ignoresSafeArea()
                 VStack(spacing: 18) {
                     VStack(spacing: 7) {
-                        Text("DOWNLOAD RESOURCE FROM SERVER")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                            .multilineTextAlignment(.center)
-                        Text(progressText)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(AppTheme.accent)
+                        TimelineView(.periodic(from: .now, by: 0.45)) { context in
+                            Text("LOGIN" + String(repeating: ".", count: Int(context.date.timeIntervalSinceReferenceDate * 2.2) % 4))
+                                .font(.system(size: 20, weight: .black, design: .rounded))
+                                .tracking(2.2)
+                                .multilineTextAlignment(.center)
+                        }
                     }
                     .foregroundStyle(.white)
 
-                    ProgressView(value: progress)
-                        .tint(AppTheme.accent)
-                        .scaleEffect(x: 1, y: 1.5, anchor: .center)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(store.syncFileNames, id: \.self) { name in
-                            HStack(spacing: 9) {
-                                Image(systemName: store.syncFinishedFileNames.contains(name) ? "checkmark.circle.fill" : (store.syncCurrentFile == name ? "arrow.down.circle.fill" : "circle"))
-                                    .foregroundStyle(store.syncFinishedFileNames.contains(name) ? .green : (store.syncCurrentFile == name ? AppTheme.accent : .white.opacity(0.35)))
-                                    .rotationEffect(.degrees(store.syncCurrentFile == name && !store.syncFinishedFileNames.contains(name) ? spinnerRotation : 0))
-                                Text(name)
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                    .foregroundStyle(.white.opacity(store.syncFinishedFileNames.contains(name) ? 0.55 : 0.95))
-                                    .lineLimit(1)
-                                Spacer()
-                            }
-                        }
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.black.opacity(0.28), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(28)
             }
