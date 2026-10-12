@@ -174,7 +174,7 @@ final class PatchProjectStore: ObservableObject {
                             await self?.finishSyncFile(remote.name)
                             continue
                         }
-                        let decoded = try PatchPackageCodec.decode(data, password: "XRE")
+                        let decoded = try PatchPackageCodec.decode(data, password: PatchPackageCodec.bundledResourcePassword)
                         // Remote entries can reuse a package UUID while their
                         // bytes change. Reusing by UUID would overwrite the
                         // previous patch and make the older/newer manifest

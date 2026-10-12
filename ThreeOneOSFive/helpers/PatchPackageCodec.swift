@@ -13,8 +13,8 @@ enum PatchPackageCodec {
     // Built-in resources are encrypted at rest. This value is only used by the
     // application to unlock its bundled resources; imported packages still
     // require the user-supplied password.
-    static let bundledResourcePassword = "XRE"
-    static let bundledResourcePasswords = ["XRE", "SKAM"]
+    static let bundledResourcePassword = "YAGAMIx1"
+    static let bundledResourcePasswords = ["YAGAMIx1"]
 
     private struct Envelope: Codable {
         let schemaVersion: Int
