@@ -168,6 +168,12 @@ final class PatchProjectStore: ObservableObject {
                             continue
                         }
                         let summary = try PatchPackageCodec.inspect(data)
+                        // Remote packages must be encrypted at rest. Never accept
+                        // a package that exposes its content key publicly.
+                        guard summary.isPasswordProtected else {
+                            await self?.finishSyncFile(remote.name)
+                            continue
+                        }
                         let decoded = try PatchPackageCodec.decode(data, password: "XRE")
                         // Remote entries can reuse a package UUID while their
                         // bytes change. Reusing by UUID would overwrite the
