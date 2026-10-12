@@ -1,4 +1,4 @@
-# External Dyali · Reseller ONYXX Dashboard
+# BABA EXTERNAL Dashboard
 
 A small private External Dyali patch-management server for the IPA integration. It stores encrypted `.3105` packages, exposes an IPA manifest, and provides an authenticated dashboard for upload, replacement, enable/disable, pause/resume, and deletion.
 
@@ -7,10 +7,11 @@ A small private External Dyali patch-management server for the IPA integration. 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install flask gunicorn
+pip install -r requirements.txt
 export VESPERDASH_ADMIN_TOKEN='use-a-long-random-token'
 export VESPERDASH_ADMIN_USERNAME='admin'
 export VESPERDASH_ADMIN_PASSWORD='use-a-long-password'
+export VESPERDASH_PATCH_PASSWORD='a-long-random-patch-password'
 python server.py
 ```
 
@@ -23,9 +24,10 @@ apt update && apt install -y python3-venv nginx
 mkdir -p /opt/vesperdash/app
 # Copy the `vesperdash/` directory here, including server.py and static/index.html.
 python3 -m venv /opt/vesperdash/venv
-/opt/vesperdash/venv/bin/pip install --upgrade pip flask gunicorn
+/opt/vesperdash/venv/bin/pip install --upgrade pip -r /opt/vesperdash/app/requirements.txt
 TOKEN=$(openssl rand -hex 32)
-printf 'VESPERDASH_ADMIN_TOKEN=%s\nVESPERDASH_ADMIN_USERNAME=admin\nVESPERDASH_ADMIN_PASSWORD=CHANGE_ME_TO_A_LONG_PASSWORD\n' "$TOKEN" > /etc/vesperdash.env
+PATCH_PASSWORD=$(openssl rand -hex 32)
+printf 'VESPERDASH_ADMIN_TOKEN=%s\nVESPERDASH_ADMIN_USERNAME=admin\nVESPERDASH_ADMIN_PASSWORD=CHANGE_ME_TO_A_LONG_PASSWORD\nVESPERDASH_PATCH_PASSWORD=%s\n' "$TOKEN" "$PATCH_PASSWORD" > /etc/vesperdash.env
 chmod 600 /etc/vesperdash.env
 cat >/etc/systemd/system/vesperdash.service <<'UNIT'
 [Unit]
@@ -70,6 +72,6 @@ The admin token is stored only in `/etc/vesperdash.env`. The dashboard asks for 
 
 `GET /health` is public. `GET /api/patches` returns enabled, non-paused patches. The dashboard supports username/password login through `POST /api/auth/login` and an HttpOnly session cookie; the legacy `X-Admin-Token` header remains supported. Admin endpoints are `GET /api/admin/patches`, `POST /api/admin/patches` (multipart upload), `POST /api/admin/patches/:id/state`, and `DELETE /api/admin/patches/:id`.
 
-Each uploaded patch may optionally provide `target_path` and `target_path_2`. If both are empty, the IPA uses the target paths embedded in the `.3105` package, matching the legacy `DevicePatchService.apply(project:)` behavior. The API keeps `target_path` for older clients and also returns `target_paths` as an array. Existing catalog rows continue to work unchanged.
+Each uploaded patch may optionally provide `target_path` and `target_path_2`. If both are empty, the IPA uses the target paths embedded in the `.3105` package, matching the legacy `DevicePatchService.apply(project:)` behavior. The API keeps `target_path` for older clients and also returns `target_paths` as an array. Legacy/public-key `.3105` uploads are automatically rewrapped with AES-GCM and PBKDF2 before storage, so the IPA only receives password-protected packages.
 
 This first server deliberately does not overwrite the IPA's local patch flow. Remote download and signature verification must be added to the IPA before remote files can be applied; the server is ready to provide the manifest and files.
