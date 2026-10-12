@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 struct VesperDashManifest: Decodable {
@@ -86,5 +87,42 @@ enum VesperDashRemoteSync {
               url.host?.lowercased() == "api.vesperdash.com",
               url.user == nil, url.password == nil else { return nil }
         return url
+    }
+}
+
+/// Keeps the whole IPA state synchronized with the tenant-level pause switch.
+/// A failed network check preserves the last known state instead of disabling
+/// the app on a transient connection error.
+@MainActor
+final class VesperDashControl: ObservableObject {
+    @Published private(set) var isPaused = false
+    @Published private(set) var lastCheckedAt: Date?
+
+    private var pollingTask: Task<Void, Never>?
+
+    func start() {
+        guard pollingTask == nil else { return }
+        pollingTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await refresh()
+                try? await Task.sleep(nanoseconds: 20_000_000_000)
+            }
+        }
+    }
+
+    func stop() {
+        pollingTask?.cancel()
+        pollingTask = nil
+    }
+
+    private func refresh() async {
+        do {
+            let manifest = try await VesperDashRemoteSync.fetchManifest()
+            isPaused = manifest.global_paused
+            lastCheckedAt = Date()
+        } catch {
+            // Fail open on temporary network failures; the next poll retries.
+        }
     }
 }

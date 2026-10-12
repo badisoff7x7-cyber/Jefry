@@ -7,6 +7,7 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var licenseManager = LicenseManager()
     @StateObject private var patchDraftCoordinator = PatchDraftCoordinator()
     @StateObject private var fileOperationCoordinator = FileOperationCoordinator();
+    @StateObject private var vesperDashControl = VesperDashControl()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @State private var updateOffer: AppUpdateChecker.Offer?
     @State private var showWelcome = false
@@ -31,7 +32,10 @@ struct ThreeOneOSFiveApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if licenseManager.isActive {
+                if vesperDashControl.isPaused {
+                    RemotePausedView()
+                        .transition(.opacity)
+                } else if licenseManager.isActive {
                     if showWelcome {
                         WelcomeView()
                             .transition(.opacity)
@@ -70,20 +74,55 @@ struct ThreeOneOSFiveApp: App {
                 }
             }
             .onAppear {
+                vesperDashControl.start()
                 licenseManager.beginLaunchSession()
                 appState.detectSupport()
                 checkForUpdate()
             }
             .onChange(of: scenePhase) { phase in
-                guard phase == .active else { return }
-                licenseManager.beginLaunchSession()
-                appState.detectSupport()
+                if phase == .active {
+                    vesperDashControl.start()
+                    licenseManager.beginLaunchSession()
+                    appState.detectSupport()
+                } else {
+                    vesperDashControl.stop()
+                }
             }
             .onOpenURL { url in
                 patchDraftCoordinator.presentImport(url)
             }
             .preferredColorScheme(.dark)
         }
+    }
+}
+
+private struct RemotePausedView: View {
+    var body: some View {
+        ZStack {
+            LoginBackdrop()
+                .ignoresSafeArea()
+
+            VStack(spacing: 14) {
+                Image(systemName: "pause.circle.fill")
+                    .font(.system(size: 58, weight: .black))
+                    .foregroundStyle(AppTheme.secondaryAccent)
+                Text("SERVICE PAUSED")
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .tracking(1.6)
+                    .foregroundStyle(.white)
+                Text("This IPA is temporarily unavailable. Please try again later.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .padding(.horizontal, 28)
+            }
+            .padding(.vertical, 34)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial.opacity(0.72), in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(AppTheme.secondaryAccent.opacity(0.35), lineWidth: 1))
+            .padding(24)
+        }
+        .preferredColorScheme(.dark)
     }
 }
 
