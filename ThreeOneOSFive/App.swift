@@ -245,7 +245,7 @@ private struct WelcomeView: View {
                     .foregroundStyle(AppTheme.secondaryAccent)
                     .shadow(color: AppTheme.secondaryAccent.opacity(0.65), radius: glow ? 28 : 10)
                     .scaleEffect(glow ? 1.06 : 0.94)
-                Text("WELCOME TO JEFRY IOS")
+                Text("WELCOME TO BABA EXTERNAL")
                     .font(.system(size: 21, weight: .black, design: .rounded))
                     .tracking(1.2)
                     .foregroundStyle(.white)

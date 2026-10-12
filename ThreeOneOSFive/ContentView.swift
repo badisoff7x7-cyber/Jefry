@@ -20,12 +20,10 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            appTab(title: " AIM", icon: "scope") { aimTab }
-            appTab(title: " ESP", icon: "eye.fill") { espTab }
             appTab(title: " HOLOGRAM", icon: "cube.transparent") { hologramTab }
             appTab(title: " SKIN MOD", icon: "sparkles") { skinModTab }
             appTab(title: " FILE STATUS", icon: "doc.badge.gearshape") { fileStatusTab }
-            appTab(title: " DEVELOPER", icon: "person.crop.circle") { developerTab }
+            appTab(title: " BABA", icon: "person.crop.circle") { developerTab }
         }
         .preferredColorScheme(.dark)
         .tint(AppTheme.accent)
@@ -87,7 +85,7 @@ struct ContentView: View {
                 VStack(spacing: 18) {
                     Image(systemName: "pause.circle.fill")
                         .font(.system(size: 64))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(AppTheme.accent)
                     Text("SERVICE PAUSED")
                         .font(.system(size: 26, weight: .black, design: .rounded))
                     Text("This IPA has been paused by the administrator. Try again later.")
@@ -223,13 +221,6 @@ struct ContentView: View {
         }
     }
 
-    private var espTab: some View {
-        VStack(spacing: 16) {
-            gameIntro(title: " ESP", subtitle: "ONLINE ESP PATCHES", icon: "eye.fill")
-            patchOptions(files: [], category: "esp", sectionTitle: "FF NORMAL", targetTitle: "FREE FIRE • NORMAL", targetBundleID: "com.dts.freefireth")
-        }
-    }
-
     private var hologramTab: some View {
         VStack(spacing: 16) {
             gameIntro(title: " HOLOGRAM", subtitle: "ONLINE HOLOGRAM PATCHES", icon: "cube.transparent")
@@ -256,7 +247,7 @@ struct ContentView: View {
             HStack {
                 panelTitle("PATCH FILES", icon: "checkmark.shield.fill")
                 Spacer()
-                Text(" JEFRY ONLINE")
+                Text(" BABA ONLINE")
                     .font(.system(size: 9, weight: .black, design: .rounded))
                     .foregroundStyle(AppTheme.secondaryAccent)
             }
@@ -281,7 +272,7 @@ struct ContentView: View {
             .background(AppTheme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             if patchStore.remoteEntries.isEmpty {
-                Text(" NO ONLINE JEFRY FILES")
+                Text(" NO ONLINE BABA FILES")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(AppTheme.paper.opacity(0.5))
                     .padding(.vertical, 14)
@@ -329,7 +320,7 @@ struct ContentView: View {
                 }
             }
 
-            Text(" STATUS CONTROLLED BY JEFRY ONLINE")
+            Text(" STATUS CONTROLLED BY BABA ONLINE")
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(AppTheme.paper.opacity(0.52))
                 .padding(.top, 5)
@@ -364,7 +355,7 @@ struct ContentView: View {
     private var brandHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(" JEFRY EXTERNAL")
+                Text(" BABA EXTERNAL")
                     .font(.system(size: 25, weight: .black, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(AppTheme.paper)
@@ -416,10 +407,10 @@ struct ContentView: View {
                     .frame(width: 32, height: 32)
                     .background(AppTheme.secondaryAccent.opacity(0.14), in: Circle())
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("JEFRY EXTERNAL CHANNEL")
+                    Text("BABA EXTERNAL CHANNEL")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
-                        Text("Jefry External")
+                        Text("BABA External")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.secondaryAccent)
                 }
@@ -467,7 +458,7 @@ struct ContentView: View {
                     }
                 }
             } else {
-                Text("NO \(category.uppercased()) PATCHES — ADD FILES FROM JEFRY ONLINE")
+                Text("NO \(category.uppercased()) PATCHES — ADD FILES FROM BABA ONLINE")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(.white.opacity(0.5))
                     .padding(.vertical, 10)
@@ -569,7 +560,7 @@ struct ContentView: View {
                 .tracking(1.2)
                 .foregroundStyle(.white.opacity(0.72))
             Spacer()
-            Text(" JEFRY READY")
+            Text(" BABA READY")
                 .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundStyle(AppTheme.accent.opacity(0.8))
         }
@@ -591,22 +582,22 @@ struct ContentView: View {
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image("JefryLogo")
+                Image("BABALogo")
                     .resizable()
                     .scaledToFill()
                     .frame(width: 58, height: 58)
                     .clipShape(Circle())
                     .overlay(Circle().stroke(developerAccent.opacity(0.7), lineWidth: 2))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("DEVELOPER INFO")
+                    Text("BABA EXTERNAL")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundStyle(developerAccent)
-                    Text("JEFRY IOS")
+                    Text("BABA EXTERNAL")
                         .font(.system(size: 20, weight: .black, design: .rounded))
                         .foregroundStyle(AppTheme.paper)
                 }
             }
-            Label("DEVELOPER INFO • DESIGN \(developerDesign + 1)", systemImage: developerIcon)
+            Label("BABA EXTERNAL", systemImage: developerIcon)
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .tracking(1.4)
                 .foregroundStyle(AppTheme.accent)
@@ -636,7 +627,7 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .accessibilityLabel("Choose developer information design")
+            .accessibilityLabel("Choose BABA style")
         }
         .padding(14)
         .background(AppTheme.referenceCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -652,11 +643,11 @@ struct ContentView: View {
                     .foregroundStyle(developerAccent)
                     .font(.system(size: 22, weight: .bold))
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("EXTRENAL CHANNEL")
+                    Text("BABA CHANNEL")
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .tracking(1.2)
                         .foregroundStyle(AppTheme.paper)
-                    Text("WhatsApp • Jefry Ventas")
+                    Text("WhatsApp • BABA External")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(AppTheme.paper.opacity(0.62))
                 }
@@ -669,18 +660,13 @@ struct ContentView: View {
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(developerAccent.opacity(0.45), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open Extrenal channel")
+        .accessibilityLabel("Open BABA channel")
     }
 
     private var feedbackCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("FEEDBACK & CONTACT")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .tracking(1.2)
-                .foregroundStyle(AppTheme.paper)
-
             socialLink(title: "TikTok", subtitle: "@el_jefry___", systemImage: "music.note", url: "https://www.tiktok.com/@el_jefry___?_r=1&_t=ZT-99k7qCypEi6w")
-            socialLink(title: "WhatsApp", subtitle: "Jefry Ventas channel", systemImage: "message.fill", url: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17")
+            socialLink(title: "WhatsApp", subtitle: "BABA External channel", systemImage: "message.fill", url: "https://whatsapp.com/channel/0029Vb8QO1x5fM5VAm0DGc17")
         }
         .padding(15)
         .background(AppTheme.ink.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -715,7 +701,7 @@ struct ContentView: View {
     }
 
     private var developerAccent: Color {
-        [AppTheme.accent, AppTheme.secondaryAccent, .cyan, .orange, .pink, .yellow, .mint, .indigo, .teal, .white][developerDesign]
+        [AppTheme.accent, AppTheme.secondaryAccent, .red, .pink, Color(red: 0.70, green: 0.02, blue: 0.04), Color(red: 1.00, green: 0.12, blue: 0.15), .orange, AppTheme.accent, AppTheme.secondaryAccent, .white][developerDesign]
     }
 
     private var developerIcon: String {

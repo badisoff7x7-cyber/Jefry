@@ -35,7 +35,7 @@ struct RemotePatch: Codable, Identifiable {
 
     var normalizedCategory: String {
         let value = (category ?? "aim").lowercased()
-        return ["aim", "esp", "hologram", "skin"].contains(value) ? value : "aim"
+        return ["aim", "hologram", "skin"].contains(value) ? value : "aim"
     }
 
     var normalizedStatus: String {
