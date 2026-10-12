@@ -29,7 +29,6 @@ MAX_UPLOAD = int(os.environ.get("VESPERDASH_MAX_UPLOAD", str(80 * 1024 * 1024)))
 PATCH_PASSWORD = os.environ.get("VESPERDASH_PATCH_PASSWORD", "XRE")
 PATCH_KDF_ITERATIONS = 250_000
 PATCH_MAGIC = b"3105PATCH\x00"
-JEFry_PATCH_IDS = {value.strip() for value in os.environ.get("VESPERDASH_JEFRY_PATCH_IDS", "draghsffthD-normal").split(",") if value.strip()}
 ALLOWED_BUNDLES = {"com.dts.freefireth", "com.dts.freefiremax"}
 ALLOWED_CATEGORIES = {"aim", "esp", "hologram", "skin"}
 
@@ -44,7 +43,7 @@ def db():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     conn.execute("""CREATE TABLE IF NOT EXISTS patches (
-        id TEXT PRIMARY KEY, scope TEXT NOT NULL DEFAULT 'all', name TEXT NOT NULL, product TEXT NOT NULL DEFAULT 'EXTERNAL VESPER', category TEXT NOT NULL DEFAULT 'aim', game TEXT NOT NULL,
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, product TEXT NOT NULL DEFAULT 'EXTERNAL VESPER', category TEXT NOT NULL DEFAULT 'aim', game TEXT NOT NULL,
         bundle_id TEXT NOT NULL, target_path TEXT NOT NULL, target_paths TEXT NOT NULL DEFAULT '[]', filename TEXT NOT NULL,
         stored_filename TEXT NOT NULL, sha256 TEXT NOT NULL, size INTEGER NOT NULL,
         enabled INTEGER NOT NULL DEFAULT 1, paused INTEGER NOT NULL DEFAULT 0,
@@ -53,11 +52,6 @@ def db():
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(patches)")}
     if "product" not in columns:
         conn.execute("ALTER TABLE patches ADD COLUMN product TEXT NOT NULL DEFAULT 'EXTERNAL VESPER'")
-    if "scope" not in columns:
-        conn.execute("ALTER TABLE patches ADD COLUMN scope TEXT NOT NULL DEFAULT 'all'")
-    if JEFry_PATCH_IDS:
-        placeholders = ",".join("?" for _ in JEFry_PATCH_IDS)
-        conn.execute(f"UPDATE patches SET scope='jefry' WHERE id IN ({placeholders})", tuple(JEFry_PATCH_IDS))
     if "category" not in columns:
         conn.execute("ALTER TABLE patches ADD COLUMN category TEXT NOT NULL DEFAULT 'aim'")
     if "image_filename" not in columns:
@@ -95,7 +89,6 @@ def auth_required(fn):
     def wrapped(*args, **kwargs):
         token = request.headers.get("X-Admin-Token", "")
         if ADMIN_TOKEN and hmac.compare_digest(token, ADMIN_TOKEN):
-            request.environ["vesperdash_scope"] = "all"
             return fn(*args, **kwargs)
         session_token = request.cookies.get("vesperdash_session", "")
         if session_token:
@@ -104,7 +97,6 @@ def auth_required(fn):
             row = conn.execute("SELECT expires_at FROM sessions WHERE token_hash=?", (digest,)).fetchone()
             if row and int(row["expires_at"]) > int(time.time()):
                 conn.close()
-                request.environ["vesperdash_scope"] = "jefry"
                 return fn(*args, **kwargs)
             conn.execute("DELETE FROM sessions WHERE token_hash=?", (digest,)); conn.commit(); conn.close()
         if not ADMIN_TOKEN and not ADMIN_PASSWORD:
@@ -124,10 +116,6 @@ def public_row(row):
     if not target_paths and row["target_path"]:
         target_paths = [row["target_path"]]
     return {**dict(row), "target_paths": target_paths, "enabled": bool(row["enabled"]), "paused": bool(row["paused"]), "download_url": f"/api/patches/{row['id']}/download", "image_url": image_url}
-
-
-def scoped_rows(rows, scope):
-    return rows if scope != "jefry" else [row for row in rows if row["scope"] == "jefry" or row["id"] in JEFry_PATCH_IDS]
 
 
 def global_paused(conn):
@@ -214,13 +202,10 @@ def auth_me():
 
 @app.get("/api/patches")
 def list_patches():
-    tenant = request.args.get("tenant", "").strip().lower()
-    scope = "jefry" if tenant == "jefry" else "all"
     conn = db(); paused = global_paused(conn); rows = conn.execute("SELECT * FROM patches ORDER BY category, game, sort_order, name").fetchall(); conn.close()
-    rows = scoped_rows(rows, scope)
     all_patches = [public_row(r) for r in rows]
     active_patches = [] if paused else [p for p in all_patches if p["enabled"] and not p["paused"]]
-    return jsonify(version=9, tenant=tenant or None, global_paused=paused, patches=active_patches, all_patches=all_patches)
+    return jsonify(version=8, global_paused=paused, patches=active_patches, all_patches=all_patches)
 
 
 @app.get("/api/patches/<patch_id>/download")
@@ -246,9 +231,7 @@ def patch_image(patch_id):
 @app.get("/api/admin/patches")
 @auth_required
 def admin_patches():
-    scope = request.environ.get("vesperdash_scope", "all")
     conn = db(); paused = global_paused(conn); rows = conn.execute("SELECT * FROM patches ORDER BY category, game, sort_order, name").fetchall(); conn.close()
-    rows = scoped_rows(rows, scope)
     return jsonify(global_paused=paused, patches=[public_row(r) for r in rows])
 
 
@@ -321,10 +304,9 @@ def upload_patch():
         image_filename = f"{patch_id}-cover-{image_digest[:12]}.{extension}"
         IMAGE_DIR.mkdir(parents=True, exist_ok=True); (IMAGE_DIR / image_filename).write_bytes(image_raw)
     now = int(time.time()); conn = db()
-    scope = request.environ.get("vesperdash_scope", "all")
-    conn.execute("""INSERT INTO patches(id,scope,name,product,category,game,bundle_id,target_path,target_paths,filename,stored_filename,sha256,size,version,image_filename,status_text,sort_order,created_at,updated_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET scope=excluded.scope,name=excluded.name,product=excluded.product,category=excluded.category,game=excluded.game,bundle_id=excluded.bundle_id,target_path=excluded.target_path,target_paths=excluded.target_paths,filename=excluded.filename,stored_filename=excluded.stored_filename,sha256=excluded.sha256,size=excluded.size,version=excluded.version,image_filename=CASE WHEN excluded.image_filename != '' THEN excluded.image_filename ELSE patches.image_filename END,status_text=excluded.status_text,sort_order=excluded.sort_order,updated_at=excluded.updated_at""",
-        (patch_id, scope, request.form["name"], product, category, request.form["game"], bundle, target_paths[0] if target_paths else "", json.dumps(target_paths), filename, stored, digest, len(raw), request.form["version"], image_filename, status_text, sort_order, now, now))
+    conn.execute("""INSERT INTO patches(id,name,product,category,game,bundle_id,target_path,target_paths,filename,stored_filename,sha256,size,version,image_filename,status_text,sort_order,created_at,updated_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,product=excluded.product,category=excluded.category,game=excluded.game,bundle_id=excluded.bundle_id,target_path=excluded.target_path,target_paths=excluded.target_paths,filename=excluded.filename,stored_filename=excluded.stored_filename,sha256=excluded.sha256,size=excluded.size,version=excluded.version,image_filename=CASE WHEN excluded.image_filename != '' THEN excluded.image_filename ELSE patches.image_filename END,status_text=excluded.status_text,sort_order=excluded.sort_order,updated_at=excluded.updated_at""",
+        (patch_id, request.form["name"], product, category, request.form["game"], bundle, target_paths[0] if target_paths else "", json.dumps(target_paths), filename, stored, digest, len(raw), request.form["version"], image_filename, status_text, sort_order, now, now))
     conn.commit(); row = conn.execute("SELECT * FROM patches WHERE id=?", (patch_id,)).fetchone(); conn.close()
     return jsonify(patch=public_row(row)), 201
 
@@ -345,8 +327,6 @@ def patch_state(patch_id):
         fields["sort_order"] = sort_order
     if not fields: return jsonify(error="send enabled, paused, status_text, and/or sort_order"), 400
     conn = db(); row = conn.execute("SELECT * FROM patches WHERE id=?", (patch_id,)).fetchone()
-    if request.environ.get("vesperdash_scope") == "jefry" and (not row or row["scope"] != "jefry"):
-        conn.close(); abort(404)
     if not row: conn.close(); abort(404)
     conn.execute("UPDATE patches SET " + ", ".join(f"{k}=?" for k in fields) + ", updated_at=? WHERE id=?", (*fields.values(), int(time.time()), patch_id)); conn.commit()
     row = conn.execute("SELECT * FROM patches WHERE id=?", (patch_id,)).fetchone(); conn.close(); return jsonify(patch=public_row(row))
@@ -356,8 +336,6 @@ def patch_state(patch_id):
 @auth_required
 def delete_patch(patch_id):
     conn = db(); row = conn.execute("SELECT * FROM patches WHERE id=?", (patch_id,)).fetchone()
-    if request.environ.get("vesperdash_scope") == "jefry" and (not row or row["scope"] != "jefry"):
-        conn.close(); abort(404)
     if not row: conn.close(); abort(404)
     conn.execute("DELETE FROM patches WHERE id=?", (patch_id,)); conn.commit(); conn.close()
     try: (PATCH_DIR / row["stored_filename"]).unlink()
