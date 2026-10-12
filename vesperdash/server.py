@@ -2,17 +2,12 @@ import hashlib
 import hmac
 import json
 import os
-import plistlib
 import secrets
 import sqlite3
 import time
-import uuid
 from pathlib import Path
 from functools import wraps
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from flask import Flask, jsonify, request, send_from_directory, abort, make_response
 from werkzeug.utils import secure_filename
 
@@ -26,8 +21,6 @@ ADMIN_USERNAME = os.environ.get("VESPERDASH_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("VESPERDASH_ADMIN_PASSWORD", "")
 SESSION_TTL = int(os.environ.get("VESPERDASH_SESSION_TTL", str(7 * 24 * 60 * 60)))
 MAX_UPLOAD = int(os.environ.get("VESPERDASH_MAX_UPLOAD", str(80 * 1024 * 1024)))
-PATCH_PASSWORD = os.environ.get("VESPERDASH_PATCH_PASSWORD", "XRE")
-PATCH_KDF_ITERATIONS = 250_000
 PATCH_MAGIC = b"3105PATCH\x00"
 JEFry_PATCH_IDS = {value.strip() for value in os.environ.get("VESPERDASH_JEFRY_PATCH_IDS", "draghsffthD-normal").split(",") if value.strip()}
 ALLOWED_BUNDLES = {"com.dts.freefireth", "com.dts.freefiremax"}
@@ -133,39 +126,6 @@ def scoped_rows(rows, scope):
 def global_paused(conn):
     row = conn.execute("SELECT value FROM settings WHERE key='global_paused'").fetchone()
     return bool(row and row["value"] == "1")
-
-
-def encrypt_patch_package(raw):
-    """Wrap legacy/public-key packages with the same AES-GCM envelope used by iOS."""
-    if not raw.startswith(PATCH_MAGIC):
-        raise ValueError("invalid 3105 package header")
-    try:
-        envelope = plistlib.loads(raw[len(PATCH_MAGIC):])
-    except Exception as exc:
-        raise ValueError("invalid 3105 package envelope") from exc
-    if envelope.get("isPasswordProtected"):
-        return raw
-    content_key = envelope.get("publicContentKey")
-    package_id = envelope.get("packageID")
-    schema = int(envelope.get("schemaVersion", 0))
-    if not isinstance(content_key, bytes) or len(content_key) != 32 or not package_id or schema < 1:
-        raise ValueError("invalid unprotected 3105 package")
-    if isinstance(package_id, bytes) and len(package_id) == 16:
-        package_id_text = str(uuid.UUID(bytes=package_id)).upper()
-    else:
-        package_id_text = str(package_id).upper()
-    salt = os.urandom(16)
-    wrapping_key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=PATCH_KDF_ITERATIONS).derive(PATCH_PASSWORD.encode())
-    key_aad = f"3105PATCH/v{schema}/key/{package_id_text}".encode()
-    nonce = os.urandom(12)
-    wrapped_key = nonce + AESGCM(wrapping_key).encrypt(nonce, content_key, key_aad)
-    envelope["isPasswordProtected"] = True
-    envelope["kdfSalt"] = salt
-    envelope["kdfIterations"] = PATCH_KDF_ITERATIONS
-    envelope["wrappedContentKey"] = wrapped_key
-    envelope["publicContentKey"] = None
-    body = plistlib.dumps(envelope, fmt=plistlib.FMT_BINARY, sort_keys=False)
-    return PATCH_MAGIC + body
 
 
 @app.errorhandler(413)
@@ -298,10 +258,8 @@ def upload_patch():
     patch_id = secure_filename(request.form["id"])
     if not patch_id: return jsonify(error="invalid id"), 400
     raw = uploaded.read()
-    try:
-        raw = encrypt_patch_package(raw)
-    except ValueError as exc:
-        return jsonify(error=str(exc)), 400
+    if not raw.startswith(PATCH_MAGIC):
+        return jsonify(error="invalid 3105 package header"), 400
     digest = hashlib.sha256(raw).hexdigest(); stored = f"{patch_id}-{digest[:12]}.3105"
     PATCH_DIR.mkdir(parents=True, exist_ok=True); (PATCH_DIR / stored).write_bytes(raw)
     image_filename = ""
