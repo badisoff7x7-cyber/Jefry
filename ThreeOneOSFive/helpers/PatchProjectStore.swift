@@ -293,7 +293,7 @@ final class PatchProjectStore: ObservableObject {
     private func applyRemoteEntries(_ entries: [RemotePatch]) {
         var seenDigests = Set<String>()
         remoteEntries = entries.filter { entry in
-            entry.normalizedProduct == "ONYX" && seenDigests.insert(entry.sha256.lowercased()).inserted
+            seenDigests.insert(entry.sha256.lowercased()).inserted
         }
         if let data = try? JSONEncoder().encode(remoteEntries) {
             UserDefaults.standard.set(data, forKey: Self.remoteEntriesKey)
